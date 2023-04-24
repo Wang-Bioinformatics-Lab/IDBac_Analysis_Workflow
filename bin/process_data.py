@@ -120,10 +120,12 @@ def main():
     # Lets make this into a dendrogram
     import plotly.figure_factory as ff
 
-    all_filenames_list = all_spectra_df["filename"].to_list()
+    # Creating labels
+    all_spectra_df["label"] = all_spectra_df["filename"].apply(lambda x: os.path.basename(x)) + ":" + all_spectra_df["scan"].astype(str)
+    all_labels_list = all_spectra_df["label"].to_list()
 
-    dendro = ff.create_dendrogram(similarity_matrix, orientation='left', labels=all_filenames_list)
-    dendro.update_layout(width=800, height=20*len(all_filenames_list))
+    dendro = ff.create_dendrogram(similarity_matrix, orientation='left', labels=all_labels_list)
+    dendro.update_layout(width=800, height=15*len(all_labels_list))
     dendro.write_html(args.output_filename)
 
 
