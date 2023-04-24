@@ -1,19 +1,11 @@
 name: idbac_analysis_workflow
 displayname: STUFF
 Views:
--   name: Summary List
-    displayname: Summary List
-    viewname: summarylist
-    displaytype: datatable
+-   name: Visualize Dendrogram
+    displayname: Visualize Dendrogram
+    viewname: visualize
+    displaytype: linkout
     parameters:
-        filename: output/summary.tsv
-        columns:
-            -   title: "View LCMS"
-                data: filename
-            -   title: "filename"
-                data: filename
-        columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
-            return `
-            <a target="_blank" href="/dashboards/lcms?usi=mzspec:GNPS2-${task}:${encodeURIComponent(row["filename"])}">View LCMS - mzspec:GNPS2-${task}:${row["filename"]}</a>
-            `;}}]'
-            
+        baseurl: /taskresult/[task]/file/nf_output/output.html
+        urlparam:
+            -   attachment:no

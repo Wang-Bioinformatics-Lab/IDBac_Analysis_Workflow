@@ -12,3 +12,5 @@ dependencies:
     - PyYAML
     - pymzml
     - pyteomics
+    - plotly
+    - scikit-learn

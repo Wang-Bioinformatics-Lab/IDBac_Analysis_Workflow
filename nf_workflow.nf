@@ -14,10 +14,10 @@ process processData {
     file input_spectra 
 
     output:
-    file 'output.tsv'
+    file 'output.html'
 
     """
-    python $TOOL_FOLDER/process_data.py $input_spectra output.tsv
+    python $TOOL_FOLDER/process_data.py $input_spectra output.html
     """
 }
 

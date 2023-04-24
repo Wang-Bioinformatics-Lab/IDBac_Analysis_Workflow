@@ -69,11 +69,17 @@ def main():
     # Lets read all the spectra that are coming out of the input_folder
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
 
+    all_spectra_df_list = []
+
     for input_filename in all_input_files:
         print("Loading data from {}".format(input_filename))
         ms1_df, ms2_df = load_data(input_filename)
 
         bin_size = 10.0
+        max_mz = 15000.0
+
+        # Filtering m/z
+        ms1_df = ms1_df[ms1_df['mz'] < max_mz]
 
         # Bin the MS1 Data by m/z within each spectrum
         ms1_df['bin'] = (ms1_df['mz'] / bin_size).astype(int)
@@ -81,11 +87,47 @@ def main():
         # Now we need to group by scan and bin
         ms1_df = ms1_df.groupby(['scan', 'bin']).agg({'i': 'sum'}).reset_index()
         ms1_df["mz"] = ms1_df["bin"] * bin_size
-
-        print(ms1_df)
+        ms1_df["bin_name"] = "BIN_" + ms1_df["bin"].astype(str)
         
+        # Turning each scan into a 1d vector that is the intensity value for each bin
+        spectra_binned_df = ms1_df.pivot(index='scan', columns='bin_name', values='i').reset_index()
+        spectra_binned_df["filename"] = input_filename
 
-        break
+        all_spectra_df_list.append(spectra_binned_df)
+
+        # DEBUG SKIP
+        # break
+
+    all_spectra_df = pd.concat(all_spectra_df_list)
+
+    numerical_columns = [x for x in all_spectra_df.columns if x.startswith("BIN_")]
+
+    # Fill in the missing values with 0
+    all_spectra_df[numerical_columns] = all_spectra_df[numerical_columns].fillna(0)
+
+    data_np = all_spectra_df[numerical_columns].to_numpy()
+
+    # lets convert each row to a numpy array
+    print(all_spectra_df)
+    print(data_np)
+
+    # Now lets do pairwise cosine similarity
+    from sklearn.metrics.pairwise import cosine_similarity
+    similarity_matrix = cosine_similarity(data_np)
+
+    print(similarity_matrix)
+
+    # Lets make this into a dendrogram
+    import plotly.figure_factory as ff
+
+    all_filenames_list = all_spectra_df["filename"].to_list()
+
+    dendro = ff.create_dendrogram(similarity_matrix, orientation='left', labels=all_filenames_list)
+    dendro.update_layout(width=800, height=20*len(all_filenames_list))
+    dendro.write_html(args.output_filename)
+
+
+    
 
 
 
