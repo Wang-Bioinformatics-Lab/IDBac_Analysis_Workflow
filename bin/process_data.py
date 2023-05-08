@@ -59,12 +59,30 @@ def load_data(input_filename):
 
     return ms1_df, ms2_df
 
+def parse_metadata(metadata_filename):
+    # check extension
+    if metadata_filename.endswith(".xlsx"):
+        metadata_df = pd.read_excel(metadata_filename)
+    elif metadata_filename.endswith(".csv"):
+        metadata_df = pd.read_csv(metadata_filename)
+    elif metadata_filename.endswith(".tsv"):
+        metadata_df = pd.read_csv(metadata_filename, sep="\t")
+
+    return metadata_df
+
+
+
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
-    parser.add_argument('output_filename')
+    parser.add_argument('metadata_filename')
+    parser.add_argument('output_basic_html_plot')
+    parser.add_argument('output_metadata_html_plot')
+    parser.add_argument('--merge_replicates', default="No")
 
     args = parser.parse_args()
+
+    metadata_df = parse_metadata(args.metadata_filename)
 
     # Lets read all the spectra that are coming out of the input_folder
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
@@ -91,7 +109,34 @@ def main():
         
         # Turning each scan into a 1d vector that is the intensity value for each bin
         spectra_binned_df = ms1_df.pivot(index='scan', columns='bin_name', values='i').reset_index()
-        spectra_binned_df["filename"] = input_filename
+        spectra_binned_df["filename"] = os.path.basename(input_filename)
+
+        print(spectra_binned_df)
+        bins_to_remove = []
+        # merging replicates
+        if args.merge_replicates == "Yes":
+            # Lets do the merge
+            all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
+            for bin in all_bins:
+                all_values = spectra_binned_df[bin]
+                print(bin, all_values)
+
+                # Count non-zero values
+                non_zero_count = len(all_values[all_values > 0])
+
+                # Calculate percent non-zero
+                percent_non_zero = non_zero_count / len(all_values)
+
+                if percent_non_zero < 0.5:
+                    bins_to_remove.append(bin)
+
+            # Removing the bins
+            spectra_binned_df = spectra_binned_df.drop(bins_to_remove, axis=1)
+
+            # Now lets get the mean for each bin
+            
+
+
 
         all_spectra_df_list.append(spectra_binned_df)
 
@@ -125,8 +170,17 @@ def main():
     all_labels_list = all_spectra_df["label"].to_list()
 
     dendro = ff.create_dendrogram(similarity_matrix, orientation='left', labels=all_labels_list)
-    dendro.update_layout(width=800, height=15*len(all_labels_list))
-    dendro.write_html(args.output_filename)
+    dendro.update_layout(width=800, height=max(15*len(all_labels_list), 150))
+    dendro.write_html(args.output_basic_html_plot)
+
+    # Making using metadata
+    all_spectra_df = all_spectra_df.merge(metadata_df, how="left", left_on="filename", right_on="Filename")
+    all_spectra_df["label"] = all_spectra_df["Strain name"]
+    all_labels_list = all_spectra_df["label"].to_list()
+
+    dendro = ff.create_dendrogram(similarity_matrix, orientation='left', labels=all_labels_list)
+    dendro.update_layout(width=800, height=max(15*len(all_labels_list), 150))
+    dendro.write_html(args.output_metadata_html_plot)
 
 
     

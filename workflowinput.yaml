@@ -19,3 +19,26 @@ parameterlist:
       optional: false
       selectsinglefile: false
       folderunroll: true
+
+    - displayname: Input Metadata File
+      paramtype: fileselector
+      nf_paramname: input_metadata_file
+      formplaceholder: Enter the path to data
+      formvalue: ""
+      targettaskfolder: input_metadata_file
+      optional: false
+      selectsinglefile: true
+      folderunroll: true
+
+    - displayname: Parameters
+      paramtype: section
+
+    - displayname: Merge Replicates
+      paramtype: select
+      nf_paramname: merge_replicates
+      formvalue: "No"
+      options:
+        - value: "No"
+          display: "No"
+        - value: "Yes"
+          display: "Yes"

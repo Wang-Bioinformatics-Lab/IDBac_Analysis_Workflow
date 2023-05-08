@@ -9,3 +9,12 @@ Views:
         baseurl: /taskresult/[task]/file/nf_output/output.html
         urlparam:
             -   attachment:no
+
+-   name: Visualize Dendrogram with Metadata
+    displayname: Visualize with Metadata
+    viewname: visualizewithmetadata
+    displaytype: linkout
+    parameters:
+        baseurl: /taskresult/[task]/file/nf_output/with_metadata.html
+        urlparam:
+            -   attachment:no
