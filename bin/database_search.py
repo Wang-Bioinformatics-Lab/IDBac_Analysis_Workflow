@@ -112,11 +112,66 @@ def main():
         spectra_binned_df = spectra_binned_df.groupby("filename").mean().reset_index()
         spectra_binned_df["scan"] = "merged"
 
-    print(spectra_binned_df)
-
     # Reading Database
     ms1_df_db, _ = load_data(args.database_mzML)
 
+    # Filtering m/z
+    ms1_df_db = ms1_df_db[ms1_df_db['mz'] < max_mz]
+
+    # Bin the MS1 Data by m/z within each spectrum
+    ms1_df_db['bin'] = (ms1_df_db['mz'] / bin_size).astype(int)
+
+    # Now we need to group by scan and bin
+    ms1_df_db = ms1_df_db.groupby(['scan', 'bin']).agg({'i': 'sum'}).reset_index()
+    ms1_df_db["mz"] = ms1_df_db["bin"] * bin_size
+    ms1_df_db["bin_name"] = "BIN_" + ms1_df_db["bin"].astype(str)
+    
+    # Turning each scan into a 1d vector that is the intensity value for each bin
+    spectra_binned_db_df = ms1_df_db.pivot(index='scan', columns='bin_name', values='i').reset_index()
+    spectra_binned_db_df["filename"] = os.path.basename(args.database_mzML)
+
+    query_numerical_columns = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
+    db_numerical_columns = [x for x in spectra_binned_db_df.columns if x.startswith("BIN_")]
+
+    merged_numerical_columns = list(set(query_numerical_columns + db_numerical_columns))
+
+    # Fill in the missing values with 0
+    numerical_columns = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
+    spectra_binned_df[numerical_columns] = spectra_binned_df[numerical_columns].fillna(0)
+    
+    # Add missing columns
+    for column in merged_numerical_columns:
+        if column not in spectra_binned_df.columns:
+            spectra_binned_df[column] = 0
+
+    query_data_np = spectra_binned_df[merged_numerical_columns].to_numpy()
+
+    # Fill in the missing values with 0
+    numerical_columns = [x for x in spectra_binned_db_df.columns if x.startswith("BIN_")]
+    spectra_binned_db_df[numerical_columns] = spectra_binned_db_df[numerical_columns].fillna(0)
+
+    # Add missing columns
+    for column in merged_numerical_columns:
+        if column not in spectra_binned_db_df.columns:
+            spectra_binned_db_df[column] = 0
+
+    database_data_np = spectra_binned_db_df[merged_numerical_columns].to_numpy()
+
+    # Now lets do pairwise cosine similarity
+    from sklearn.metrics.pairwise import cosine_similarity
+    similarity_matrix = cosine_similarity(query_data_np, database_data_np)
+
+    print(similarity_matrix)
+    for i, row in enumerate(similarity_matrix):
+        for j, item in enumerate(row):
+            query_index = i
+            database_index = j
+            similarity = item
+
+    # TODO: We will need to map the index back to the query scan and filename
+    # TODO: We will need to map the database index back to the original
+
+            
 
 
 

@@ -90,9 +90,9 @@ process databaseSearch {
     conda "$TOOL_FOLDER/conda_env.yml"
 
     input:
-    file idbac_database
+    file idbac_database_mzML
+    file idbac_database_json
     file query_mzML
-    file query_json
 
     output:
     file 'search_results/*'
@@ -100,9 +100,9 @@ process databaseSearch {
     """
     mkdir search_results
     python $TOOL_FOLDER/database_search.py \
-    $idbac_database \
     $query_mzML \
-    $query_json \
+    $idbac_database_mzML \
+    $idbac_database_json \
     search_results \
     --merge_replicates ${params.merge_replicates}
     """
@@ -121,9 +121,9 @@ workflow {
     (output_idbac_database_ch, output_idbac_mzML_ch) = downloadDatabase(1)
 
     // Baseline Correct the spectra
-    baseline_corrected_db_ch = baselineCorrection2(output_idbac_mzML_ch)
+    baseline_corrected_mzML_ch = baselineCorrection2(output_idbac_mzML_ch)
 
     // Matching database to query spectra
-    search_results_ch = databaseSearch(baseline_corrected_db_ch, output_idbac_database_ch, normalized_spectra_ch)
+    search_results_ch = databaseSearch(baseline_corrected_mzML_ch, output_idbac_database_ch, normalized_spectra_ch)
 
 }
