@@ -111,7 +111,6 @@ def main():
         spectra_binned_df = ms1_df.pivot(index='scan', columns='bin_name', values='i').reset_index()
         spectra_binned_df["filename"] = os.path.basename(input_filename)
 
-        print(spectra_binned_df)
         bins_to_remove = []
         # merging replicates
         if args.merge_replicates == "Yes":
@@ -119,7 +118,7 @@ def main():
             all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
             for bin in all_bins:
                 all_values = spectra_binned_df[bin]
-                print(bin, all_values)
+                #print(bin, all_values)
 
                 # Count non-zero values
                 non_zero_count = len(all_values[all_values > 0])
@@ -134,14 +133,11 @@ def main():
             spectra_binned_df = spectra_binned_df.drop(bins_to_remove, axis=1)
 
             # Now lets get the mean for each bin
-            
-
-
+            spectra_binned_df = spectra_binned_df.groupby("filename").mean().reset_index()
+            spectra_binned_df["scan"] = "merged"
 
         all_spectra_df_list.append(spectra_binned_df)
 
-        # DEBUG SKIP
-        # break
 
     all_spectra_df = pd.concat(all_spectra_df_list)
 
@@ -151,10 +147,6 @@ def main():
     all_spectra_df[numerical_columns] = all_spectra_df[numerical_columns].fillna(0)
 
     data_np = all_spectra_df[numerical_columns].to_numpy()
-
-    # lets convert each row to a numpy array
-    print(all_spectra_df)
-    print(data_np)
 
     # Now lets do pairwise cosine similarity
     from sklearn.metrics.pairwise import cosine_similarity
