@@ -110,14 +110,35 @@ process databaseSearch {
     """
 }
 
+process summarizeBaselineResolvedSpectra{
+    publishDir "./nf_output/query", mode: 'copy'
+
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    input:
+    file "input_spectra/*"
+
+    output:
+    file 'summary.tsv'
+
+    """
+    python $TOOL_FOLDER/summarize_spectra.py \
+    input_spectra \
+    summary.tsv
+    """
+}
+
 workflow {
     // Doing baseline correction
     input_mzml_files_ch = Channel.fromPath(params.input_spectra_folder + "/*.mzML")
-    normalized_spectra_ch = baselineCorrection(input_mzml_files_ch)
+    baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
 
     // Creating Spectra Dendrogram
     metadata_file_ch = Channel.fromPath(params.input_metadata_file)
-    processData(normalized_spectra_ch.collect(), metadata_file_ch)
+    processData(baseline_query_spectra_ch.collect(), metadata_file_ch)
+
+    // Summarizing Input
+    summarizeBaselineResolvedSpectra(baseline_query_spectra_ch.collect())
 
     // Downloading Database
     (output_idbac_database_ch, output_idbac_mzML_ch) = downloadDatabase(1)
