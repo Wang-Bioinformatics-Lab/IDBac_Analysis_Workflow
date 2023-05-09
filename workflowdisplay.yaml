@@ -35,7 +35,7 @@ Views:
                 data: filename
         columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
         return `
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/baselinecorrected//${row["filename"]}:scan:${row["scan"]}">View Spectrum</a>
+            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/baselinecorrected//${row["filename"]}:scan:${row["scan"]}">View Spectrum in Resolver</a>
             <br>
-            <a href="/dashboards/embedded/resolver/?usi=mzspec:GNPS2:TASK-${task}-nf_output/baselinecorrected//${encodeURIComponent(row["filename"])}:scan:${encodeURIComponent(row["scan"])}">View in GNPS2</a>
+            <a target="_blank" href="/dashboards/embedded/resolver/?usi=mzspec:GNPS2:TASK-${task}-nf_output/baselinecorrected//${encodeURIComponent(row["filename"])}:scan:${encodeURIComponent(row["scan"])}">View in GNPS2</a>
         `;}}]'
