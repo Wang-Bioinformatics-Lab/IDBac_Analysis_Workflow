@@ -42,3 +42,15 @@ parameterlist:
           display: "No"
         - value: "Yes"
           display: "Yes"
+
+    - displayname: Similarity Method
+      paramtype: select
+      nf_paramname: similarity
+      formvalue: "presence"
+      options:
+        - value: "presence"
+          display: "presence"
+        - value: "cosine"
+          display: "cosine"
+        - value: "euclidean"
+          display: "euclidean"

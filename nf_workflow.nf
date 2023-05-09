@@ -5,6 +5,7 @@ params.input_spectra_folder = ""
 params.input_metadata_file = ""
 
 params.merge_replicates = "No"
+params.similarity = "presence"
 
 TOOL_FOLDER = "$baseDir/bin"
 
@@ -61,7 +62,8 @@ process processData {
     python $TOOL_FOLDER/process_data.py input_spectra $metadata_file \
     output.html \
     with_metadata.html \
-    --merge_replicates ${params.merge_replicates}
+    --merge_replicates ${params.merge_replicates} \
+    --similarity ${params.similarity}
     """
 }
 
@@ -124,6 +126,6 @@ workflow {
     baseline_corrected_mzML_ch = baselineCorrection2(output_idbac_mzML_ch)
 
     // Matching database to query spectra
-    search_results_ch = databaseSearch(baseline_corrected_mzML_ch, output_idbac_database_ch, normalized_spectra_ch)
+    //search_results_ch = databaseSearch(baseline_corrected_mzML_ch, output_idbac_database_ch, normalized_spectra_ch)
 
 }

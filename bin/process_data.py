@@ -70,7 +70,7 @@ def parse_metadata(metadata_filename):
 
     return metadata_df
 
-
+    
 
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -79,6 +79,7 @@ def main():
     parser.add_argument('output_basic_html_plot')
     parser.add_argument('output_metadata_html_plot')
     parser.add_argument('--merge_replicates', default="No")
+    parser.add_argument('--similarity', default="cosine")
 
     args = parser.parse_args()
 
@@ -149,10 +150,18 @@ def main():
     data_np = all_spectra_df[numerical_columns].to_numpy()
 
     # Now lets do pairwise cosine similarity
-    from sklearn.metrics.pairwise import cosine_similarity
-    similarity_matrix = cosine_similarity(data_np)
+    from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 
-    print(similarity_matrix)
+    selected_distance_fun = None
+    if args.similarity == "cosine":
+        selected_distance_fun = cosine_distances
+    elif args.similarity == "euclidean":
+        selected_distance_fun = euclidean_distances
+    elif args.similarity == "presence":
+        selected_distance_fun = cosine_distances
+        
+        # Update the data to be 1 or 0
+        data_np[data_np > 0] = 1
 
     # Lets make this into a dendrogram
     import plotly.figure_factory as ff
@@ -161,7 +170,7 @@ def main():
     all_spectra_df["label"] = all_spectra_df["filename"].apply(lambda x: os.path.basename(x)) + ":" + all_spectra_df["scan"].astype(str)
     all_labels_list = all_spectra_df["label"].to_list()
 
-    dendro = ff.create_dendrogram(similarity_matrix, orientation='left', labels=all_labels_list)
+    dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun)
     dendro.update_layout(width=800, height=max(15*len(all_labels_list), 150))
     dendro.write_html(args.output_basic_html_plot)
 
@@ -170,14 +179,9 @@ def main():
     all_spectra_df["label"] = all_spectra_df["Strain name"]
     all_labels_list = all_spectra_df["label"].to_list()
 
-    dendro = ff.create_dendrogram(similarity_matrix, orientation='left', labels=all_labels_list)
+    dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun)
     dendro.update_layout(width=800, height=max(15*len(all_labels_list), 150))
     dendro.write_html(args.output_metadata_html_plot)
-
-
-    
-
-
 
 
 if __name__ == '__main__':
