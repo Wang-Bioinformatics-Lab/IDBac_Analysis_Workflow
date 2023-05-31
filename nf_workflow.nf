@@ -83,6 +83,7 @@ process downloadDatabase {
     python $TOOL_FOLDER/download_database.py \
     idbac_database.json \
     temp.mzML
+    
     export LC_ALL=C && $TOOL_FOLDER/msconvert temp.mzML \
     --mzML --32 --outfile idbac_database.mzML
     """

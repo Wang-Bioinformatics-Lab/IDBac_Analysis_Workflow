@@ -46,23 +46,24 @@ def main():
                 scan = 1
                 for spectrum in output_spectra_list:
                     # getting the mz peaks
-                    peaks = spectrum["peaks"]
+                    spectrum_list = spectrum["spectrum"]
 
-                    # unzip
-                    mz_array = [x[0] for x in peaks]
-                    intensity_array = [x[1] for x in peaks]
+                    for peaks in spectrum_list:
+                        # unzip
+                        mz_array = [x[0] for x in peaks]
+                        intensity_array = [x[1] for x in peaks]
 
-                    out.write_spectrum(
-                        mz_array, intensity_array,
-                        id="scan={}".format(scan), params=[
-                            "MS1 Spectrum",
-                            {"ms level": 1},
-                            {"total ion current": sum(intensity_array)}
-                        ])
+                        out.write_spectrum(
+                            mz_array, intensity_array,
+                            id="scan={}".format(scan), params=[
+                                "MS1 Spectrum",
+                                {"ms level": 1},
+                                {"total ion current": sum(intensity_array)}
+                            ])
+                        
+                        spectrum["scan"] = scan
                     
-                    spectrum["scan"] = scan
-                    
-                    scan += 1
+                        scan += 1
 
     # Saving JSON
     with open(args.output_library_json, "w") as output_file:

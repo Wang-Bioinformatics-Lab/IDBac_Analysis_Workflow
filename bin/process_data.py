@@ -119,7 +119,6 @@ def main():
             all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
             for bin in all_bins:
                 all_values = spectra_binned_df[bin]
-                #print(bin, all_values)
 
                 # Count non-zero values
                 non_zero_count = len(all_values[all_values > 0])
