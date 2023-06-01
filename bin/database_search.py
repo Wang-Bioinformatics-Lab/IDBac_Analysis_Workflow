@@ -253,9 +253,6 @@ def main():
 
                 output_results_list.append(result_dict)
 
-        if len(output_results_list) > 0:
-            break
-
 
     # TODO: We will need to map the database index back to the original
     small_database_df = database_df[["row_count", "scan"]]
