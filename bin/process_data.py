@@ -67,6 +67,8 @@ def parse_metadata(metadata_filename):
         metadata_df = pd.read_csv(metadata_filename)
     elif metadata_filename.endswith(".tsv"):
         metadata_df = pd.read_csv(metadata_filename, sep="\t")
+    else:
+        metadata_df = pd.read_csv(metadata_filename, sep=None)
 
     return metadata_df
 
@@ -75,7 +77,7 @@ def parse_metadata(metadata_filename):
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
-    parser.add_argument('metadata_filename')
+    parser.add_argument('metadata_filename') # We will use this metadata to paint the plots better
     parser.add_argument('output_basic_html_plot')
     parser.add_argument('output_metadata_html_plot')
     parser.add_argument('--merge_replicates', default="No")

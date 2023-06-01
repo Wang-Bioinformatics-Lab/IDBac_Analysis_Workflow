@@ -83,9 +83,6 @@ def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Ye
 
     # Turning each scan into a 1d vector that is the intensity value for each bin
     spectra_binned_df = db_spectra.pivot(index='scan', columns='bin_name', values='i').reset_index()
-    spectra_binned_df["filename"] = os.path.basename("DB")
-
-    print(db_scan_mapping_df)
 
     # Mapping
     spectra_binned_df = spectra_binned_df.merge(db_scan_mapping_df, how="left", left_on="scan", right_on="scan")
@@ -119,7 +116,7 @@ def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Ye
             filtered_df = filtered_df.drop(bins_to_remove, axis=1)
 
             # Now lets get the mean for each bin
-            filtered_df = filtered_df.groupby("filename").mean().reset_index()
+            filtered_df = filtered_df.groupby("database_id").mean().reset_index()
             filtered_df["scan"] = database_id
 
             merged_spectra_list.append(filtered_df)
@@ -135,7 +132,7 @@ def main():
     parser.add_argument('input_folder')
     parser.add_argument('database_mzML')
     parser.add_argument('database_scan_mapping_tsv')
-    parser.add_argument('results_folder')
+    parser.add_argument('output_results_tsv')
     parser.add_argument('--merge_replicates', default="Yes")
 
     args = parser.parse_args()
@@ -287,7 +284,7 @@ def main():
         result_dict["db_culture_collection"] = spectrum_dict["Culture Collection"]
     
     output_results_df = pd.DataFrame(output_results_list)
-    output_results_df.to_csv(args.output_filename, sep="\t", index=False)
+    output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
 
 if __name__ == '__main__':
     main()

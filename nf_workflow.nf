@@ -100,15 +100,14 @@ process databaseSearch {
     file "input_spectra/*"
 
     output:
-    file 'search_results/*'
+    file 'db_results.tsv'
 
     """
-    mkdir search_results
     python $TOOL_FOLDER/database_search.py \
     input_spectra \
     $idbac_database_mzML \
     $idbac_database_scan_mapping \
-    search_results \
+    db_results.tsv \
     --merge_replicates ${params.merge_replicates}
     """
 }
