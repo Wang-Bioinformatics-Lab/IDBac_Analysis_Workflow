@@ -77,13 +77,15 @@ process downloadDatabase {
 
     output:
     file 'idbac_database.json'
+    file 'idbac_database_scanmapping.tsv'
     file 'idbac_database.mzML'
 
     """
     python $TOOL_FOLDER/download_database.py \
     idbac_database.json \
+    idbac_database_scanmapping.tsv \
     temp.mzML
-    
+
     export LC_ALL=C && $TOOL_FOLDER/msconvert temp.mzML \
     --mzML --32 --outfile idbac_database.mzML
     """
@@ -94,8 +96,8 @@ process databaseSearch {
 
     input:
     file idbac_database_mzML
-    file idbac_database_json
-    file query_mzML
+    file idbac_database_scan_mapping
+    file "input_spectra/*"
 
     output:
     file 'search_results/*'
@@ -103,9 +105,9 @@ process databaseSearch {
     """
     mkdir search_results
     python $TOOL_FOLDER/database_search.py \
-    $query_mzML \
+    input_spectra \
     $idbac_database_mzML \
-    $idbac_database_json \
+    $idbac_database_scan_mapping \
     search_results \
     --merge_replicates ${params.merge_replicates}
     """
@@ -142,12 +144,12 @@ workflow {
     summarizeBaselineResolvedSpectra(baseline_query_spectra_ch.collect())
 
     // Downloading Database
-    (output_idbac_database_ch, output_idbac_mzML_ch) = downloadDatabase(1)
+    (output_idbac_database_ch, output_scan_mapping_ch, output_idbac_mzML_ch) = downloadDatabase(1)
 
     // Baseline Correct the spectra
     baseline_corrected_mzML_ch = baselineCorrection2(output_idbac_mzML_ch)
 
     // Matching database to query spectra
-    //search_results_ch = databaseSearch(baseline_corrected_mzML_ch, output_idbac_database_ch, normalized_spectra_ch)
+    search_results_ch = databaseSearch(baseline_corrected_mzML_ch, output_scan_mapping_ch, baseline_query_spectra_ch.collect())
 
 }

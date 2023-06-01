@@ -10,6 +10,7 @@ from psims.mzml.writer import MzMLWriter
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('output_library_json')
+    parser.add_argument('output_library_scan_mapping_txt')
     parser.add_argument('output_library_mzml')
 
     args = parser.parse_args()
@@ -33,11 +34,13 @@ def main():
         r = requests.get(url, params=params)
 
         spectrum_dict = r.json()
+        spectrum_dict["database_id"] = database_id
 
         # add to json list
         output_spectra_list.append(spectrum_dict)
 
     # Saving mzML
+    output_scan_mapping = []
     with MzMLWriter(open(args.output_library_mzml, 'wb'), close=True) as out:
         # Add default controlled vocabularies
         out.controlled_vocabularies()
@@ -61,13 +64,22 @@ def main():
                                 {"total ion current": sum(intensity_array)}
                             ])
                         
-                        spectrum["scan"] = scan
+                        # Creating scan mapping dict
+                        scan_mapping_dict = {}
+                        scan_mapping_dict["scan"] = scan
+                        scan_mapping_dict["database_id"] = spectrum["database_id"]
+
+                        output_scan_mapping.append(scan_mapping_dict)
                     
                         scan += 1
 
     # Saving JSON
     with open(args.output_library_json, "w") as output_file:
-        json.dump(output_spectra_list, output_file)
+        json.dump(output_spectra_list, output_file, indent=4)
+
+    # Saving scan mapping
+    scan_mapping_df = pd.DataFrame(output_scan_mapping)
+    scan_mapping_df.to_csv(args.output_library_scan_mapping_txt, sep="\t", index=False)
 
     
 
