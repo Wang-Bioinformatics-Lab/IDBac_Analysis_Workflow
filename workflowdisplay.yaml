@@ -45,12 +45,18 @@ Views:
     viewname: dbresults
     displaytype: datatable
     parameters:
-        filename: nf_output/query/summary.tsv
+        filename: nf_output/search/db_results.tsv
         error_missingfile: "No File"
         columns:
-            -   title: "Visualize"
-                data: 
-            -   title: "scan"
-                data: scan
-            -   title: "filename"
-                data: filename
+            -   title: "query_filename"
+                data: "query_filename"
+            -   title: "query_index"
+                data: "query_index"
+            -   title: "database_id"
+                data: "database_id"
+            -   title: "db_strain_name"
+                data: "db_strain_name"
+            -   title: "db_culture_collection"
+                data: "db_culture_collection"
+            -   title: "similarity"
+                data: "similarity"

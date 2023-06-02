@@ -96,6 +96,8 @@ process downloadDatabase {
 }
 
 process databaseSearch {
+    publishDir "./nf_output/search", mode: 'copy'
+
     conda "$TOOL_FOLDER/conda_env.yml"
 
     input:
