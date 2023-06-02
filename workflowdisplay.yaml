@@ -39,3 +39,18 @@ Views:
             <br>
             <a target="_blank" href="/dashboards/embedded/resolver/?usi=mzspec:GNPS2:TASK-${task}-nf_output/baselinecorrected//${encodeURIComponent(row["filename"])}:scan:${encodeURIComponent(row["scan"])}">View in GNPS2</a>
         `;}}]'
+
+-   name: Database Search Summary
+    displayname: Database Search Summary
+    viewname: dbresults
+    displaytype: datatable
+    parameters:
+        filename: nf_output/query/summary.tsv
+        error_missingfile: "No File"
+        columns:
+            -   title: "Visualize"
+                data: 
+            -   title: "scan"
+                data: scan
+            -   title: "filename"
+                data: filename

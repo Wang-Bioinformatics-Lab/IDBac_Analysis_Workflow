@@ -82,6 +82,7 @@ def main():
     parser.add_argument('output_metadata_html_plot')
     parser.add_argument('--merge_replicates', default="No")
     parser.add_argument('--similarity', default="cosine")
+    parser.add_argument('--metadata_column', default="None")
 
     args = parser.parse_args()
 
@@ -176,14 +177,71 @@ def main():
     dendro.write_html(args.output_basic_html_plot)
 
     # Making using metadata
-    all_spectra_df = all_spectra_df.merge(metadata_df, how="left", left_on="filename", right_on="Filename")
-    all_spectra_df["label"] = all_spectra_df["Strain name"]
-    all_labels_list = all_spectra_df["label"].to_list()
+    try:
+        # Selecting the column to visualize
+        # coloring_column = "Strain / Isolate Source"
+        coloring_column = args.metadata_column
 
-    dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun)
-    dendro.update_layout(width=800, height=max(15*len(all_labels_list), 150))
-    dendro.write_html(args.output_metadata_html_plot)
+        all_spectra_df = all_spectra_df.merge(metadata_df, how="left", left_on="filename", right_on="Filename")
+        all_spectra_df["label"] = all_spectra_df[coloring_column]
+        all_labels_list = all_spectra_df["label"].to_list()
 
+        # Define color palette
+        color_palette = ['red', 'green', 'blue', 'yellow']
+
+        all_categories = list(all_spectra_df[coloring_column])
+        unique_categories = list(set(all_categories))
+        leaf_colors = [color_palette[unique_categories.index(category)] if unique_categories.index(category) < len(color_palette) else 'gray' for category in all_categories]
+
+        # Creating Dendrogram
+        dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun, colorscale=leaf_colors)
+        dendro.update_layout(width=800, height=max(15*len(all_labels_list), 150))
+
+        # Setting the leaf colors
+        dendro['data'][0]['textfont']['color'] = leaf_colors
+        
+        # Create legend annotations
+        import plotly.graph_objects as go
+
+        legend_annotations = []
+        for i, category in enumerate(unique_categories):
+            annotation = go.layout.Annotation(
+                x=1,
+                y=i,
+                xref='paper',
+                yref='paper',
+                text=category,
+                showarrow=False,
+                font=dict(color=color_palette[unique_categories.index(category)] if unique_categories.index(category) < len(color_palette) else 'gray')
+            )
+            legend_annotations.append(annotation)
+
+        # Create legend shapes
+        legend_shapes = []
+        for i in range(len(unique_categories)):
+            shape = go.layout.Shape(
+                type='rect',
+                x0=1.05,
+                y0=1 - (i + 1) * 0.05,
+                x1=1.1,
+                y1=1 - i * 0.05,
+                fillcolor=color_palette[unique_categories.index(category)] if unique_categories.index(category) < len(color_palette) else 'gray',
+                line=dict(width=0)
+            )
+            legend_shapes.append(shape)
+
+
+        # Add legend annotations and shapes to the layout
+        dendro.update_layout(
+            annotations=legend_annotations,
+            #shapes=legend_shapes,
+            showlegend=False  # Disable default legend
+        )
+
+        dendro.write_html(args.output_metadata_html_plot)
+
+    except:
+        pass
 
 if __name__ == '__main__':
     main()

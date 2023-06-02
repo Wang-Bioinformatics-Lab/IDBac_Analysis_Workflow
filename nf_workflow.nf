@@ -7,6 +7,8 @@ params.input_metadata_file = ""
 params.merge_replicates = "No"
 params.similarity = "presence"
 
+params.metadata_column = "None"
+
 TOOL_FOLDER = "$baseDir/bin"
 
 
@@ -44,11 +46,12 @@ process baselineCorrection2 {
     """
 }
 
-
 process processData {
     publishDir "./nf_output", mode: 'copy'
 
     conda "$TOOL_FOLDER/conda_env.yml"
+
+    cache false
 
     input:
     file "input_spectra/*"
@@ -63,7 +66,8 @@ process processData {
     output.html \
     with_metadata.html \
     --merge_replicates ${params.merge_replicates} \
-    --similarity ${params.similarity}
+    --similarity ${params.similarity} \
+    --metadata_column "${params.metadata_column}"
     """
 }
 

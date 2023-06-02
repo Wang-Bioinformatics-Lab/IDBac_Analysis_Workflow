@@ -54,3 +54,10 @@ parameterlist:
           display: "cosine"
         - value: "euclidean"
           display: "euclidean"
+
+    - displayname: Metadata Colum to Display
+      paramtype: text
+      nf_paramname: metadata_column
+      formplaceholder: Enter the metadata_column
+      formvalue: "None"
+      tooltip: "Pick the column in your metadata you want to visualize"
