@@ -17,6 +17,8 @@ process baselineCorrection {
 
     conda "$TOOL_FOLDER/conda_maldiquant.yml"
 
+    errorStrategy 'ignore'
+
     input:
     file input_file 
 
