@@ -59,18 +59,18 @@ def load_data(input_filename):
 
     return ms1_df, ms2_df
 
-def parse_metadata(metadata_filename):
-    # check extension
-    if metadata_filename.endswith(".xlsx"):
-        metadata_df = pd.read_excel(metadata_filename)
-    elif metadata_filename.endswith(".csv"):
-        metadata_df = pd.read_csv(metadata_filename)
-    elif metadata_filename.endswith(".tsv"):
-        metadata_df = pd.read_csv(metadata_filename, sep="\t")
+def _load_metadata(input_filename):
+    # look at extension
+    if input_filename.endswith(".tsv"):
+        input_df = pd.read_csv(input_filename, sep="\t")
+    elif input_filename.endswith(".csv"):
+        input_df = pd.read_csv(input_filename, sep=",")
+    elif input_filename.endswith(".xlsx"):
+        input_df = pd.read_excel(input_filename)
     else:
-        metadata_df = pd.read_csv(metadata_filename, sep=None)
+        input_df = pd.read_csv(input_filename, sep=None)
 
-    return metadata_df
+    return input_df
 
     
 
@@ -86,7 +86,7 @@ def main():
 
     args = parser.parse_args()
 
-    metadata_df = parse_metadata(args.metadata_filename)
+    metadata_df = _load_metadata(args.metadata_filename)
 
     # Lets read all the spectra that are coming out of the input_folder
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
