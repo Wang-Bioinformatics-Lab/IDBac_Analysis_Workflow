@@ -134,7 +134,8 @@ def main():
     parser.add_argument('database_scan_mapping_tsv')
     parser.add_argument('output_results_tsv')
     parser.add_argument('--merge_replicates', default="Yes")
-
+    parser.add_argument('--score_threshold', default=0.7, type=float)
+    
     args = parser.parse_args()
 
     database_df = load_database(args.database_mzML, args.database_scan_mapping_tsv, merge_replicates=args.merge_replicates)
@@ -240,7 +241,7 @@ def main():
                 database_index = j
                 similarity = item
 
-                if similarity < 0.3:
+                if similarity < args.score_threshold:
                     continue
 
                 result_dict = {}
@@ -249,10 +250,7 @@ def main():
                 result_dict["similarity"] = similarity
                 result_dict["query_filename"] = os.path.basename(input_filename)
 
-                print(result_dict)
-
                 output_results_list.append(result_dict)
-
 
     # TODO: We will need to map the database index back to the original
     small_database_df = database_df[["row_count", "scan"]]
@@ -263,7 +261,11 @@ def main():
     if len(output_results_df) == 0:
         print("No matches found")
         open(args.output_results_tsv, "w").write("\n")
+
         exit(0)
+
+    print(small_database_df)
+    print(output_results_df)
     
     output_results_df = output_results_df.merge(small_database_df, left_on="query_index", right_on="row_count", how="left")
                 

@@ -6,6 +6,7 @@ params.input_metadata_file = ""
 
 params.merge_replicates = "No"
 params.similarity = "presence"
+params.database_search_threshold = "0.7"
 
 params.metadata_column = "None"
 
@@ -52,8 +53,6 @@ process processData {
     publishDir "./nf_output", mode: 'copy'
 
     conda "$TOOL_FOLDER/conda_env.yml"
-
-    cache false
 
     input:
     file "input_spectra/*"
@@ -116,7 +115,8 @@ process databaseSearch {
     $idbac_database_mzML \
     $idbac_database_scan_mapping \
     db_results.tsv \
-    --merge_replicates ${params.merge_replicates}
+    --merge_replicates ${params.merge_replicates} \
+    --score_threshold ${params.database_search_threshold}
     """
 }
 

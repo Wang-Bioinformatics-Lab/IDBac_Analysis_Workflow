@@ -1,7 +1,7 @@
 workflowname: idbac_analysis_workflow
 workflowdescription: idbac_analysis_workflow
 workflowlongdescription: This is a idbac analysis nextflow workflow for GNPS2
-workflowversion: "0.1"
+workflowversion: "0.2"
 workflowfile: nf_workflow.nf
 workflowautohide: false
 adminonly: false
@@ -54,6 +54,13 @@ parameterlist:
           display: "cosine"
         - value: "euclidean"
           display: "euclidean"
+
+    - displayname: Database Search Threshold
+      paramtype: text
+      nf_paramname: database_search_threshold
+      formplaceholder: Enter the Database Search Threshold
+      formvalue: "0.7"
+      tooltip: "database_search_threshold"
 
     - displayname: Metadata Colum to Display
       paramtype: text
