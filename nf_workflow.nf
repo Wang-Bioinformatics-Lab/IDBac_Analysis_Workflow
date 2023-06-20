@@ -60,8 +60,8 @@ process processData {
     file metadata_file
 
     output:
-    file 'output.html'
-    file 'with_metadata.html'
+    file 'output.html' optional true
+    file 'with_metadata.html' optional true
 
     """
     python $TOOL_FOLDER/process_data.py input_spectra $metadata_file \

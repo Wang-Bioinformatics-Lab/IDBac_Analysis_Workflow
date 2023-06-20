@@ -240,7 +240,7 @@ def main():
                 database_index = j
                 similarity = item
 
-                if similarity < 0.7:
+                if similarity < 0.3:
                     continue
 
                 result_dict = {}
@@ -260,6 +260,11 @@ def main():
     small_database_df = small_database_df.rename(columns={"scan": "database_id"})
 
     output_results_df = pd.DataFrame(output_results_list)
+    if len(output_results_df) == 0:
+        print("No matches found")
+        open(args.output_results_tsv, "w").write("\n")
+        exit(0)
+    
     output_results_df = output_results_df.merge(small_database_df, left_on="query_index", right_on="row_count", how="left")
                 
     # Enrich the library information by hitting the web api
