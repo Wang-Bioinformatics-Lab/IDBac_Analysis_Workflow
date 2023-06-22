@@ -49,6 +49,26 @@ process baselineCorrection2 {
     """
 }
 
+process mergeInputSpectra {
+    publishDir "./nf_output", mode: 'copy'
+
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    input:
+    file "input_spectra/*"
+
+    output:
+    file 'merged/*.mzML'
+
+    """
+    mkdir merged
+    python $TOOL_FOLDER/merge_spectra.py \
+    input_spectra \
+    merged \
+    --merge_replicates ${params.merge_replicates}
+    """
+}
+
 process processData {
     publishDir "./nf_output", mode: 'copy'
 
@@ -61,11 +81,13 @@ process processData {
     output:
     file 'output.html' optional true
     file 'with_metadata.html' optional true
+    file "output_similarity_table.tsv" optional true
 
     """
     python $TOOL_FOLDER/process_data.py input_spectra $metadata_file \
     output.html \
     with_metadata.html \
+    output_similarity_table.tsv \
     --merge_replicates ${params.merge_replicates} \
     --similarity ${params.similarity} \
     --metadata_column "${params.metadata_column}"
@@ -142,6 +164,9 @@ workflow {
     // Doing baseline correction
     input_mzml_files_ch = Channel.fromPath(params.input_spectra_folder + "/*.mzML")
     baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
+
+    // Doing merging of spectra
+    mergeInputSpectra(baseline_query_spectra_ch.collect())
 
     // Creating Spectra Dendrogram
     metadata_file_ch = Channel.fromPath(params.input_metadata_file)

@@ -140,8 +140,6 @@ def main():
 
     database_df = load_database(args.database_mzML, args.database_scan_mapping_tsv, merge_replicates=args.merge_replicates)
 
-    print(database_df)
-
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
 
     output_results_list = []

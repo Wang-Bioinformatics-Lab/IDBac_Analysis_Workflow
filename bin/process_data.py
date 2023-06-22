@@ -72,17 +72,17 @@ def _load_metadata(input_filename):
 
     return input_df
 
-    
-
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
     parser.add_argument('metadata_filename') # We will use this metadata to paint the plots better
     parser.add_argument('output_basic_html_plot')
     parser.add_argument('output_metadata_html_plot')
+    parser.add_argument('output_similarity_table')
     parser.add_argument('--merge_replicates', default="No")
     parser.add_argument('--similarity', default="cosine")
     parser.add_argument('--metadata_column', default="None")
+    parser.add_argument('--bin_size', default=10.0, type=float)
 
     args = parser.parse_args()
 
@@ -90,6 +90,7 @@ def main():
 
     # Lets read all the spectra that are coming out of the input_folder
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
+    all_input_files.sort()
 
     all_spectra_df_list = []
 
@@ -97,7 +98,7 @@ def main():
         print("Loading data from {}".format(input_filename))
         ms1_df, ms2_df = load_data(input_filename)
 
-        bin_size = 10.0
+        bin_size = args.bin_size
         max_mz = 15000.0
 
         # Filtering m/z
@@ -165,12 +166,36 @@ def main():
         # Update the data to be 1 or 0
         data_np[data_np > 0] = 1
 
-    # Lets make this into a dendrogram
-    import plotly.figure_factory as ff
-
     # Creating labels
     all_spectra_df["label"] = all_spectra_df["filename"].apply(lambda x: os.path.basename(x)) + ":" + all_spectra_df["scan"].astype(str)
+    all_spectra_df["label"] = all_spectra_df["label"].apply(lambda x: x.replace(":merged", ""))
     all_labels_list = all_spectra_df["label"].to_list()
+
+    # Calculating the distances between all the spectra
+    similarity_matrix = selected_distance_fun(data_np)
+
+    # Merge in the labels
+    output_scores_list = []
+    for index_i, label_i in enumerate(all_labels_list):
+        for index_j, label_j in enumerate(all_labels_list):
+            if index_i == index_j:
+                continue
+
+            if index_i > index_j:
+                continue
+            
+            output_dict = {}
+            output_dict["label_i"] = label_i
+            output_dict["label_j"] = label_j
+            output_dict["similarity"] = similarity_matrix[index_i][index_j]
+
+            output_scores_list.append(output_dict)
+
+    output_scores_df = pd.DataFrame(output_scores_list)
+    output_scores_df.to_csv(args.output_similarity_table, sep="\t", index=False)
+
+    # Lets make this into a dendrogram
+    import plotly.figure_factory as ff
 
     dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun)
     dendro.update_layout(width=800, height=max(15*len(all_labels_list), 150))
@@ -198,45 +223,45 @@ def main():
         dendro.update_layout(width=800, height=max(15*len(all_labels_list), 150))
 
         # Setting the leaf colors
-        dendro['data'][0]['textfont']['color'] = leaf_colors
+        # dendro['data'][0]['textfont']['color'] = leaf_colors
         
         # Create legend annotations
-        import plotly.graph_objects as go
+        # import plotly.graph_objects as go
 
-        legend_annotations = []
-        for i, category in enumerate(unique_categories):
-            annotation = go.layout.Annotation(
-                x=1,
-                y=i,
-                xref='paper',
-                yref='paper',
-                text=category,
-                showarrow=False,
-                font=dict(color=color_palette[unique_categories.index(category)] if unique_categories.index(category) < len(color_palette) else 'gray')
-            )
-            legend_annotations.append(annotation)
+        # legend_annotations = []
+        # for i, category in enumerate(unique_categories):
+        #     annotation = go.layout.Annotation(
+        #         x=1,
+        #         y=i,
+        #         xref='paper',
+        #         yref='paper',
+        #         text=category,
+        #         showarrow=False,
+        #         font=dict(color=color_palette[unique_categories.index(category)] if unique_categories.index(category) < len(color_palette) else 'gray')
+        #     )
+        #     legend_annotations.append(annotation)
 
-        # Create legend shapes
-        legend_shapes = []
-        for i in range(len(unique_categories)):
-            shape = go.layout.Shape(
-                type='rect',
-                x0=1.05,
-                y0=1 - (i + 1) * 0.05,
-                x1=1.1,
-                y1=1 - i * 0.05,
-                fillcolor=color_palette[unique_categories.index(category)] if unique_categories.index(category) < len(color_palette) else 'gray',
-                line=dict(width=0)
-            )
-            legend_shapes.append(shape)
+        # # Create legend shapes
+        # legend_shapes = []
+        # for i in range(len(unique_categories)):
+        #     shape = go.layout.Shape(
+        #         type='rect',
+        #         x0=1.05,
+        #         y0=1 - (i + 1) * 0.05,
+        #         x1=1.1,
+        #         y1=1 - i * 0.05,
+        #         fillcolor=color_palette[unique_categories.index(category)] if unique_categories.index(category) < len(color_palette) else 'gray',
+        #         line=dict(width=0)
+        #     )
+        #     legend_shapes.append(shape)
 
 
-        # Add legend annotations and shapes to the layout
-        dendro.update_layout(
-            annotations=legend_annotations,
-            #shapes=legend_shapes,
-            showlegend=False  # Disable default legend
-        )
+        # # Add legend annotations and shapes to the layout
+        # dendro.update_layout(
+        #     annotations=legend_annotations,
+        #     #shapes=legend_shapes,
+        #     showlegend=False  # Disable default legend
+        # )
 
         dendro.write_html(args.output_metadata_html_plot)
 
