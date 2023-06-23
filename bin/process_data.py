@@ -208,7 +208,7 @@ def main():
         coloring_column = args.metadata_column
 
         all_spectra_df = all_spectra_df.merge(metadata_df, how="left", left_on="filename", right_on="Filename")
-        all_spectra_df["label"] = all_spectra_df[coloring_column]
+        all_spectra_df["label"] = all_spectra_df[coloring_column].fillna("No Metadata")
         all_labels_list = all_spectra_df["label"].to_list()
 
         # Define color palette

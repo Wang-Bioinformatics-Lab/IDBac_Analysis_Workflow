@@ -35,9 +35,9 @@ Views:
                 data: filename
         columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
         return `
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/baselinecorrected//${row["filename"]}:scan:${row["scan"]}">View Spectrum in Resolver</a>
+            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["filename"]}:scan:${row["scan"]}">View Spectrum in Resolver</a>
             <br>
-            <a target="_blank" href="/dashboards/embedded/resolver/?usi=mzspec:GNPS2:TASK-${task}-nf_output/baselinecorrected//${encodeURIComponent(row["filename"])}:scan:${encodeURIComponent(row["scan"])}">View in GNPS2</a>
+            <a target="_blank" href="/dashboards/embedded/resolver/?usi=mzspec:GNPS2:TASK-${task}-nf_output/merged/${encodeURIComponent(row["filename"])}:scan:${encodeURIComponent(row["scan"])}">View in GNPS2</a>
         `;}}]'
 
 -   name: Dendrogram Similarity
@@ -58,9 +58,11 @@ Views:
                 data: "similarity"
         columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
         return `
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1">View Spectrum 1</a>
+            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1">View Spectrum 1 - Resolver</a>
             <br>
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Spectrum 2</a>
+            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Spectrum 2 - Resolver</a>
+            <br>
+            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Mirror - Resolver</a>
             <br>
             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1">View Spectrum 1 - Local</a>
             <br>
