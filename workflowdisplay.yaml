@@ -101,7 +101,7 @@ Views:
             <br>
             <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Database - Resolver </a>
             <br>
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Mirror - Resolver</a>
+            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Mirror - Resolver</a>
             <br>
             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1">View Query - Local</a>
             <br>
