@@ -10,6 +10,8 @@ from tqdm import tqdm
 import glob
 import numpy as np
 
+bin_size = 10.0
+
 def load_data(input_filename):
     try:
         ms1_df, ms2_df = msql_fileloading.load_data(input_filename)
@@ -60,14 +62,11 @@ def load_data(input_filename):
     return ms1_df, ms2_df
 
 def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Yes"):
-    print("HERE")
-
     # Reading Data
     db_spectra, _ = load_data(database_mzML)
     db_scan_mapping_df = pd.read_csv(database_scan_mapping_tsv, sep="\t")
     
     # Now we need to create consensus spectra in the database
-    bin_size = 10.0
     max_mz = 15000.0
 
     # Filtering m/z
@@ -86,8 +85,6 @@ def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Ye
 
     # Mapping
     spectra_binned_df = spectra_binned_df.merge(db_scan_mapping_df, how="left", left_on="scan", right_on="scan")
-
-    print(spectra_binned_df)
     
     # Lets now merge everything
     merged_spectra_list = []
@@ -127,11 +124,38 @@ def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Ye
     return merged_spectra_df
 
 
+def output_database(database_df, output_mgf_filename):
+    with open(output_mgf_filename, "w") as o:
+        database_list = database_df.to_dict(orient="records")
+
+        for database_entry in database_list:
+            row_id = database_entry["row_count"]
+
+            scan_number = row_id + 1
+
+            o.write("BEGIN IONS\n")
+            o.write("SCANS={}\n".format(scan_number))
+            o.write("TITLE={}\n".format(database_entry["scan"]))
+
+            # Finding all the masses
+            all_binned_masses = [x for x in database_entry.keys() if x.startswith("BIN_")]
+
+            for binned_mass in all_binned_masses:
+                intensity = database_entry[binned_mass]
+                mz = float(binned_mass.replace("BIN_", "")) * bin_size
+
+                if intensity > 0:
+                    o.write("{} {}\n".format(mz, intensity))
+            
+            o.write("END IONS\n")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
     parser.add_argument('database_mzML')
     parser.add_argument('database_scan_mapping_tsv')
+    parser.add_argument('output_database_mgf', help="This is the merged database file output as an MGF file")
     parser.add_argument('output_results_tsv')
     parser.add_argument('--merge_replicates', default="Yes")
     parser.add_argument('--score_threshold', default=0.7, type=float)
@@ -262,10 +286,11 @@ def main():
 
         exit(0)
 
-    print(small_database_df)
+    print(database_df)
     print(output_results_df)
     
     output_results_df = output_results_df.merge(small_database_df, left_on="query_index", right_on="row_count", how="left")
+    output_results_df["database_scan"] = output_results_df["row_count"] + 1
                 
     # Enrich the library information by hitting the web api
     output_results_list = output_results_df.to_dict(orient="records")
@@ -284,9 +309,15 @@ def main():
 
         result_dict["db_strain_name"] = spectrum_dict["Strain name"]
         result_dict["db_culture_collection"] = spectrum_dict["Culture Collection"]
+        result_dict["db_sample_name"] = spectrum_dict["Sample name"]
     
     output_results_df = pd.DataFrame(output_results_list)
     output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
+
+    # Writing out the database itself that has been merged
+    output_database(database_df, args.output_database_mgf)
+
+
 
 if __name__ == '__main__':
     main()

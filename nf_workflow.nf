@@ -130,19 +130,21 @@ process databaseSearch {
 
     output:
     file 'db_results.tsv'
+    file 'output_database.mgf'
 
     """
     python $TOOL_FOLDER/database_search.py \
     input_spectra \
     $idbac_database_mzML \
     $idbac_database_scan_mapping \
+    output_database.mgf \
     db_results.tsv \
     --merge_replicates ${params.merge_replicates} \
     --score_threshold ${params.database_search_threshold}
     """
 }
 
-process summarizeBaselineResolvedSpectra{
+process summarizeSpectra{
     publishDir "./nf_output/query", mode: 'copy'
 
     conda "$TOOL_FOLDER/conda_env.yml"
@@ -166,22 +168,22 @@ workflow {
     baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
 
     // Doing merging of spectra
-    mergeInputSpectra(baseline_query_spectra_ch.collect())
+    merged_spectra_ch = mergeInputSpectra(baseline_query_spectra_ch.collect())
 
     // Creating Spectra Dendrogram
     metadata_file_ch = Channel.fromPath(params.input_metadata_file)
     processData(baseline_query_spectra_ch.collect(), metadata_file_ch)
 
     // Summarizing Input
-    summarizeBaselineResolvedSpectra(baseline_query_spectra_ch.collect())
+    summarizeSpectra(merged_spectra_ch.collect())
 
     // Downloading Database
     (output_idbac_database_ch, output_scan_mapping_ch, output_idbac_mzML_ch) = downloadDatabase(1)
 
     // Baseline Correct the spectra
-    baseline_corrected_mzML_ch = baselineCorrection2(output_idbac_mzML_ch)
+    baseline_corrected_database_mzML_ch = baselineCorrection2(output_idbac_mzML_ch)
 
     // Matching database to query spectra
-    search_results_ch = databaseSearch(baseline_corrected_mzML_ch, output_scan_mapping_ch, baseline_query_spectra_ch.collect())
+    (search_results_ch, output_database_mzML) = databaseSearch(baseline_corrected_database_mzML_ch, output_scan_mapping_ch, baseline_query_spectra_ch.collect())
 
 }
