@@ -26,7 +26,7 @@ parameterlist:
       formplaceholder: Enter the path to data
       formvalue: ""
       targettaskfolder: input_metadata_file
-      optional: false
+      optional: true
       selectsinglefile: true
       folderunroll: true
 
