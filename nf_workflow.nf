@@ -129,8 +129,8 @@ process databaseSearch {
     file "input_spectra/*"
 
     output:
-    file 'db_results.tsv'
-    file 'output_database.mgf'
+    file 'db_results.tsv' optional true
+    file 'output_database.mgf' optional true
 
     """
     python $TOOL_FOLDER/database_search.py \
