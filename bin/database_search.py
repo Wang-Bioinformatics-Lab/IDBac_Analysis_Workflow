@@ -154,7 +154,7 @@ def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
     parser.add_argument('database_mzML')
-    parser.add_argument('database_scan_mapping_tsv')
+    parser.add_argument('database_scan_mapping_tsv', help="this file maps the scan in the mzML into the database_id")
     parser.add_argument('output_database_mgf', help="This is the merged database file output as an MGF file")
     parser.add_argument('output_results_tsv')
     parser.add_argument('--merge_replicates', default="Yes")
@@ -162,7 +162,20 @@ def main():
     
     args = parser.parse_args()
 
+    # Loading the database, this will also merge the spectra
     database_df = load_database(args.database_mzML, args.database_scan_mapping_tsv, merge_replicates=args.merge_replicates)
+
+    # Create a row count column, starting at 0, counting all the way up, will be useful for keeping track of things when we do matrix multiplication
+    database_df["row_count"] = np.arange(len(database_df))
+
+    # Updating filenames in database
+    database_df["filename"] = os.path.basename(args.database_mzML)
+
+    # Writing out the database itself so that we can more easily visualize it
+    output_database(database_df, args.output_database_mgf)
+
+    # Prepping database for matching
+    db_numerical_columns = [x for x in database_df.columns if x.startswith("BIN_")]
 
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
 
@@ -219,14 +232,8 @@ def main():
         
         # Turning each scan into a 1d vector that is the intensity value for each bin
         spectra_binned_db_df = database_df
-        spectra_binned_db_df["filename"] = os.path.basename(args.database_mzML)
-
-        # Create a row count column, starting at 0, counting all the way up
-        spectra_binned_db_df["row_count"] = np.arange(len(spectra_binned_db_df))
-
 
         query_numerical_columns = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
-        db_numerical_columns = [x for x in spectra_binned_db_df.columns if x.startswith("BIN_")]
 
         merged_numerical_columns = list(set(query_numerical_columns + db_numerical_columns))
 
@@ -286,10 +293,10 @@ def main():
 
         exit(0)
 
-    print(database_df)
     print(output_results_df)
     
-    output_results_df = output_results_df.merge(small_database_df, left_on="query_index", right_on="row_count", how="left")
+    # Here we want to take the results from the search
+    output_results_df = output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
     output_results_df["database_scan"] = output_results_df["row_count"] + 1
                 
     # Enrich the library information by hitting the web api
@@ -314,8 +321,7 @@ def main():
     output_results_df = pd.DataFrame(output_results_list)
     output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
 
-    # Writing out the database itself that has been merged
-    output_database(database_df, args.output_database_mgf)
+    
 
 
 
