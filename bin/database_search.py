@@ -317,6 +317,7 @@ def main():
         result_dict["db_strain_name"] = spectrum_dict["Strain name"]
         result_dict["db_culture_collection"] = spectrum_dict["Culture Collection"]
         result_dict["db_sample_name"] = spectrum_dict["Sample name"]
+        result_dict["db_genbank_accession"] = spectrum_dict["Genbank accession"]
     
     output_results_df = pd.DataFrame(output_results_list)
     output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
