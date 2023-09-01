@@ -72,21 +72,29 @@ process mergeInputSpectra {
 process processData {
     publishDir "./nf_output", mode: 'copy'
 
+    cache false
+
     conda "$TOOL_FOLDER/conda_env.yml"
 
     input:
     file "input_spectra/*"
     file metadata_file
+    file database_hits
 
     output:
     file 'output.html' optional true
     file 'with_metadata.html' optional true
+    file 'with_database.html' optional true
     file "output_similarity_table.tsv" optional true
 
     """
-    python $TOOL_FOLDER/process_data.py input_spectra $metadata_file \
+    python $TOOL_FOLDER/process_data.py \
+    input_spectra \
+    $metadata_file \
+    $database_hits \
     output.html \
     with_metadata.html \
+    with_database.html \
     output_similarity_table.tsv \
     --merge_replicates ${params.merge_replicates} \
     --similarity ${params.similarity} \
@@ -129,7 +137,7 @@ process databaseSearch {
     file "input_spectra/*"
 
     output:
-    file 'db_results.tsv' optional true
+    file 'db_results.tsv'
     file 'output_database.mgf' optional true
 
     """
@@ -141,6 +149,25 @@ process databaseSearch {
     db_results.tsv \
     --merge_replicates ${params.merge_replicates} \
     --score_threshold ${params.database_search_threshold}
+    """
+}
+
+process enrichDatabaseSearch {
+    publishDir "./nf_output/search", mode: 'copy'
+
+    conda "$TOOL_FOLDER/conda_env_enrichment.yml"
+
+    input:
+    file input_results
+    
+    output:
+    file 'enriched_db_results.tsv'
+    
+
+    """
+    python $TOOL_FOLDER/enrich_database_hits.py \
+    $input_results \
+    enriched_db_results.tsv
     """
 }
 
@@ -170,10 +197,6 @@ workflow {
     // Doing merging of spectra
     merged_spectra_ch = mergeInputSpectra(baseline_query_spectra_ch.collect())
 
-    // Creating Spectra Dendrogram
-    metadata_file_ch = Channel.fromPath(params.input_metadata_file)
-    processData(baseline_query_spectra_ch.collect(), metadata_file_ch)
-
     // Summarizing Input
     summarizeSpectra(merged_spectra_ch.collect())
 
@@ -185,5 +208,12 @@ workflow {
 
     // Matching database to query spectra
     (search_results_ch, output_database_mzML) = databaseSearch(baseline_corrected_database_mzML_ch, output_scan_mapping_ch, baseline_query_spectra_ch.collect())
+
+    // Enriching database search results
+    enriched_results_db_ch = enrichDatabaseSearch(search_results_ch)
+
+    // Creating Spectra Dendrogram
+    metadata_file_ch = Channel.fromPath(params.input_metadata_file)
+    processData(baseline_query_spectra_ch.collect(), metadata_file_ch, enriched_results_db_ch)
 
 }

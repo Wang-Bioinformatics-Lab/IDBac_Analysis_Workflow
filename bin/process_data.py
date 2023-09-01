@@ -78,9 +78,13 @@ def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
     parser.add_argument('metadata_filename') # We will use this metadata to paint the plots better
+    parser.add_argument('input_database_hits')
+    
     parser.add_argument('output_basic_html_plot')
     parser.add_argument('output_metadata_html_plot')
+    parser.add_argument('output_db_html_plot')
     parser.add_argument('output_similarity_table')
+
     parser.add_argument('--merge_replicates', default="No")
     parser.add_argument('--similarity', default="cosine")
     parser.add_argument('--metadata_column', default="None")
@@ -270,6 +274,37 @@ def main():
         # )
 
         dendro.write_html(args.output_metadata_html_plot)
+
+    except:
+        pass
+
+    # Making using database hits
+    try:
+        input_database_hits_df = pd.read_csv(args.input_database_hits, sep="\t")
+        
+        # sort by similarity
+        input_database_hits_df = input_database_hits_df.sort_values(by="similarity", ascending=False)
+
+        # Picking the best one
+        input_database_hits_df = input_database_hits_df.groupby("query_filename").first().reset_index()
+
+        all_spectra_df = all_spectra_df.merge(input_database_hits_df, how="left", left_on="filename", right_on="query_filename")
+        all_spectra_df["label"] = all_spectra_df["db_taxonomy"].fillna("No Taxa")
+        all_spectra_df["label"] = all_spectra_df["label"] + " - " + all_spectra_df["filename"]
+        all_labels_list = all_spectra_df["label"].to_list()
+
+        refined_labels_list = []
+        for label in all_labels_list:
+            try:
+                refined_labels_list.append(label.split("; ")[-2] + "; " + label.split("; ")[-1])
+            except:
+                refined_labels_list.append(label)
+
+        # Creating Dendrogram
+        dendro = ff.create_dendrogram(data_np, orientation='left', labels=refined_labels_list, distfun=selected_distance_fun)
+        dendro.update_layout(width=800, height=max(15*len(all_labels_list), 150))
+
+        dendro.write_html(args.output_db_html_plot)
 
     except:
         pass

@@ -280,8 +280,10 @@ def main():
                 result_dict["query_filename"] = os.path.basename(input_filename)
 
                 output_results_list.append(result_dict)
+        
+        # DEBUG
+        # break
 
-    # TODO: We will need to map the database index back to the original
     small_database_df = database_df[["row_count", "scan"]]
     # rename the scan column to database_id
     small_database_df = small_database_df.rename(columns={"scan": "database_id"})
