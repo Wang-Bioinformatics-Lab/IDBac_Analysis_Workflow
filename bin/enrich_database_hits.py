@@ -17,8 +17,14 @@ def main():
 
     args = parser.parse_args()
 
+    # We might end up with a file without any entries
+    try:
+        results_df = pd.read_csv(args.input_db_results, sep="\t")
+    except:
+        print("Error reading input file, output empty file")
+        open(args.enriched_db_results, "w").close()
 
-    results_df = pd.read_csv(args.input_db_results, sep="\t")
+        exit(0)
 
     results_list = results_df.to_dict(orient="records")
 
