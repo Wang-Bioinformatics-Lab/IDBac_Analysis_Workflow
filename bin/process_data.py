@@ -289,8 +289,7 @@ def main():
         input_database_hits_df = input_database_hits_df.groupby("query_filename").first().reset_index()
 
         all_spectra_df = all_spectra_df.merge(input_database_hits_df, how="left", left_on="filename", right_on="query_filename")
-        all_spectra_df["label"] = all_spectra_df["db_taxonomy"].fillna("No Taxa")
-        all_spectra_df["label"] = all_spectra_df["label"] + " - " + all_spectra_df["filename"]
+        all_spectra_df["label"] = all_spectra_df["filename"]
         all_labels_list = all_spectra_df["label"].to_list()
 
         refined_labels_list = []
