@@ -40,7 +40,10 @@ def main():
             r = requests.get(mapping_url)
             result_dictionary = xmltodict.parse(r.text)
             print(result_dictionary)
-            nuccore_id = result_dictionary["eLinkResult"]["LinkSet"][0]["IdList"]["Id"]
+            try:
+                nuccore_id = result_dictionary["eLinkResult"]["LinkSet"][0]["IdList"]["Id"]
+            except:
+                nuccore_id = result_dictionary["eLinkResult"]["LinkSet"]["IdList"]["Id"]
 
             # here we will use an API to get the information
             xml_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id={}&retmode=xml".format(nuccore_id)
