@@ -32,23 +32,6 @@ process baselineCorrection {
     """
 }
 
-process baselineCorrection2 {
-    publishDir "./nf_output/library", mode: 'copy'
-
-    conda "$TOOL_FOLDER/conda_maldiquant.yml"
-
-    input:
-    file input_file 
-
-    output:
-    file 'baselinecorrected/*.mzML'
-
-    """
-    mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file baselinecorrected/${input_file}
-    """
-}
-
 process mergeInputSpectra {
     publishDir "./nf_output", mode: 'copy'
 
@@ -112,17 +95,10 @@ process downloadDatabase {
 
     output:
     file 'idbac_database.json'
-    file 'idbac_database_scanmapping.tsv'
-    file 'idbac_database.mzML'
 
     """
     python $TOOL_FOLDER/download_database.py \
-    idbac_database.json \
-    idbac_database_scanmapping.tsv \
-    temp.mzML
-
-    export LC_ALL=C && $TOOL_FOLDER/msconvert temp.mzML \
-    --mzML --32 --outfile idbac_database.mzML
+    idbac_database.json
     """
 }
 
@@ -132,20 +108,16 @@ process databaseSearch {
     conda "$TOOL_FOLDER/conda_env.yml"
 
     input:
-    file idbac_database_mzML
-    file idbac_database_scan_mapping
+    file idbac_database_filtered_json
     file "input_spectra/*"
 
     output:
     file 'db_results.tsv'
-    file 'output_database.mgf' optional true
 
     """
     python $TOOL_FOLDER/database_search.py \
     input_spectra \
-    $idbac_database_mzML \
-    $idbac_database_scan_mapping \
-    output_database.mgf \
+    $idbac_database_filtered_json \
     db_results.tsv \
     --merge_replicates ${params.merge_replicates} \
     --score_threshold ${params.database_search_threshold}
@@ -201,13 +173,10 @@ workflow {
     summarizeSpectra(merged_spectra_ch.collect())
 
     // Downloading Database
-    (output_idbac_database_ch, output_scan_mapping_ch, output_idbac_mzML_ch) = downloadDatabase(1)
-
-    // Baseline Correct the spectra
-    baseline_corrected_database_mzML_ch = baselineCorrection2(output_idbac_mzML_ch)
+    (output_idbac_database_ch) = downloadDatabase(1)
 
     // Matching database to query spectra
-    (search_results_ch, output_database_mzML) = databaseSearch(baseline_corrected_database_mzML_ch, output_scan_mapping_ch, baseline_query_spectra_ch.collect())
+    (search_results_ch, output_database_mzML) = databaseSearch(output_idbac_database_ch, baseline_query_spectra_ch.collect())
 
     // Enriching database search results
     enriched_results_db_ch = enrichDatabaseSearch(search_results_ch)
