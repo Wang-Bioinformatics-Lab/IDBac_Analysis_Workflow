@@ -8,9 +8,23 @@ from pyteomics import mzxml, mzml
 from massql import msql_fileloading
 from tqdm import tqdm
 import glob
+from functools import lru_cache
 import numpy as np
 
 bin_size = 10.0
+
+# Create an LRU Cache from functools
+@lru_cache(maxsize=1000)
+def _retreive_kb_metadata(database_id):
+    url = "https://idbac-kb.gnps2.org/api/spectrum"
+    params = {}
+    params["database_id"] = database_id
+
+    r = requests.get(url, params=params)
+
+    spectrum_dict = r.json()
+
+    return spectrum_dict
 
 def load_data(input_filename):
     try:
@@ -61,101 +75,48 @@ def load_data(input_filename):
 
     return ms1_df, ms2_df
 
-def load_database(database_mzML, database_scan_mapping_tsv, merge_replicates="Yes"):
-    # Reading Data
-    db_spectra, _ = load_data(database_mzML)
-    db_scan_mapping_df = pd.read_csv(database_scan_mapping_tsv, sep="\t")
+def load_database(database_filtered_json):
+    all_database_spectra = json.load(open(database_filtered_json))
+
+    formatted_database_spectra = []
+    for spectrum in all_database_spectra:
+        formatted_spectrum = {}
+        formatted_spectrum["database_id"] = spectrum["database_id"]
+
+        for peak in spectrum["peaks"]:
+            formatted_spectrum["BIN_" + str(int(peak["mz"] / bin_size))] = peak["i"]
+
+        formatted_database_spectra.append(formatted_spectrum)
+
+    return pd.DataFrame(formatted_database_spectra)
+    
+
+    # Now we can make this into a dataframe that we can use as we did before
     
     # Now we need to create consensus spectra in the database
-    max_mz = 15000.0
+    # max_mz = 15000.0
 
-    # Filtering m/z
-    db_spectra = db_spectra[db_spectra['mz'] < max_mz]
+    # # Filtering m/z
+    # db_spectra = db_spectra[db_spectra['mz'] < max_mz]
 
-    # Bin the MS1 Data by m/z within each spectrum
-    db_spectra['bin'] = (db_spectra['mz'] / bin_size).astype(int)
+    # # Bin the MS1 Data by m/z within each spectrum
+    # db_spectra['bin'] = (db_spectra['mz'] / bin_size).astype(int)
 
-    # Now we need to group by scan and bin
-    db_spectra = db_spectra.groupby(['scan', 'bin']).agg({'i': 'sum'}).reset_index()
-    db_spectra["mz"] = db_spectra["bin"] * bin_size
-    db_spectra["bin_name"] = "BIN_" + db_spectra["bin"].astype(str)
+    # # Now we need to group by scan and bin
+    # db_spectra = db_spectra.groupby(['scan', 'bin']).agg({'i': 'sum'}).reset_index()
+    # db_spectra["mz"] = db_spectra["bin"] * bin_size
+    # db_spectra["bin_name"] = "BIN_" + db_spectra["bin"].astype(str)
 
-    # Turning each scan into a 1d vector that is the intensity value for each bin
-    spectra_binned_df = db_spectra.pivot(index='scan', columns='bin_name', values='i').reset_index()
+    # # Turning each scan into a 1d vector that is the intensity value for each bin
+    # spectra_binned_df = db_spectra.pivot(index='scan', columns='bin_name', values='i').reset_index()
 
-    # Mapping
-    spectra_binned_df = spectra_binned_df.merge(db_scan_mapping_df, how="left", left_on="scan", right_on="scan")
-    
-    # Lets now merge everything
-    merged_spectra_list = []
-    if merge_replicates == "Yes":
-        # We want to do this by database_id
-        all_database_id = spectra_binned_df["database_id"].unique()
-        for database_id in all_database_id:
-            bins_to_remove = []
-            filtered_df = spectra_binned_df[spectra_binned_df["database_id"] == database_id]
-
-            # Lets do the merge
-            all_bins = [x for x in filtered_df.columns if x.startswith("BIN_")]
-            for bin in all_bins:
-                all_values = filtered_df[bin]
-
-                # Count non-zero values
-                non_zero_count = len(all_values[all_values > 0])
-
-                # Calculate percent non-zero
-                percent_non_zero = non_zero_count / len(all_values)
-
-                if percent_non_zero < 0.5:
-                    bins_to_remove.append(bin)
-
-            # Removing the bins
-            filtered_df = filtered_df.drop(bins_to_remove, axis=1)
-
-            # Now lets get the mean for each bin
-            filtered_df = filtered_df.groupby("database_id").mean().reset_index()
-            filtered_df["scan"] = database_id
-
-            merged_spectra_list.append(filtered_df)
-
-        # merging everything
-        merged_spectra_df = pd.concat(merged_spectra_list)
-
-    return merged_spectra_df
-
-
-def output_database(database_df, output_mgf_filename):
-    with open(output_mgf_filename, "w") as o:
-        database_list = database_df.to_dict(orient="records")
-
-        for database_entry in database_list:
-            row_id = database_entry["row_count"]
-
-            scan_number = row_id + 1
-
-            o.write("BEGIN IONS\n")
-            o.write("SCANS={}\n".format(scan_number))
-            o.write("TITLE={}\n".format(database_entry["scan"]))
-
-            # Finding all the masses
-            all_binned_masses = [x for x in database_entry.keys() if x.startswith("BIN_")]
-
-            for binned_mass in all_binned_masses:
-                intensity = database_entry[binned_mass]
-                mz = float(binned_mass.replace("BIN_", "")) * bin_size
-
-                if intensity > 0:
-                    o.write("{} {}\n".format(mz, intensity))
-            
-            o.write("END IONS\n")
+    #return merged_spectra_df
 
 
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
-    parser.add_argument('database_mzML')
-    parser.add_argument('database_scan_mapping_tsv', help="this file maps the scan in the mzML into the database_id")
-    parser.add_argument('output_database_mgf', help="This is the merged database file output as an MGF file")
+    parser.add_argument('database_filtered_json')
     parser.add_argument('output_results_tsv')
     parser.add_argument('--merge_replicates', default="Yes")
     parser.add_argument('--score_threshold', default=0.7, type=float)
@@ -163,16 +124,10 @@ def main():
     args = parser.parse_args()
 
     # Loading the database, this will also merge the spectra
-    database_df = load_database(args.database_mzML, args.database_scan_mapping_tsv, merge_replicates=args.merge_replicates)
+    database_df = load_database(args.database_filtered_json)
 
     # Create a row count column, starting at 0, counting all the way up, will be useful for keeping track of things when we do matrix multiplication
     database_df["row_count"] = np.arange(len(database_df))
-
-    # Updating filenames in database
-    database_df["filename"] = os.path.basename(args.database_mzML)
-
-    # Writing out the database itself so that we can more easily visualize it
-    output_database(database_df, args.output_database_mgf)
 
     # Prepping database for matching
     db_numerical_columns = [x for x in database_df.columns if x.startswith("BIN_")]
@@ -180,11 +135,11 @@ def main():
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
 
     output_results_list = []
+    #for input_filename in all_input_files[:5]:
     for input_filename in all_input_files:
         # Reading Query
         ms1_df, _ = load_data(input_filename)
 
-        bin_size = 10.0
         max_mz = 15000.0
 
         # Filtering m/z
@@ -226,9 +181,8 @@ def main():
             # Now lets get the mean for each bin
             spectra_binned_df = spectra_binned_df.groupby("filename").mean().reset_index()
             spectra_binned_df["scan"] = "merged"
-
         
-        # Formatting Database
+        # Formatting Database to fill NAs
         
         # Turning each scan into a 1d vector that is the intensity value for each bin
         spectra_binned_db_df = database_df
@@ -263,7 +217,7 @@ def main():
         from sklearn.metrics.pairwise import cosine_similarity
         similarity_matrix = cosine_similarity(query_data_np, database_data_np)
 
-        print(similarity_matrix)
+        #print(similarity_matrix)
         for i, row in enumerate(similarity_matrix):
             for j, item in enumerate(row):
                 query_index = i
@@ -280,13 +234,9 @@ def main():
                 result_dict["query_filename"] = os.path.basename(input_filename)
 
                 output_results_list.append(result_dict)
-        
-        # DEBUG
-        # break
 
-    small_database_df = database_df[["row_count", "scan"]]
-    # rename the scan column to database_id
-    small_database_df = small_database_df.rename(columns={"scan": "database_id"})
+    small_database_df = database_df[["row_count", "database_id"]]
+    small_database_df["database_scan"] = small_database_df["database_id"]
 
     output_results_df = pd.DataFrame(output_results_list)
     if len(output_results_df) == 0:
@@ -294,32 +244,22 @@ def main():
         open(args.output_results_tsv, "w").write("\n")
 
         exit(0)
-
-    print(output_results_df)
     
     # Here we want to take the results from the search
     output_results_df = output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
+    output_results_df["database_id"] = output_results_df["database_scan"]
     output_results_df["database_scan"] = output_results_df["row_count"] + 1
                 
     # Enrich the library information by hitting the web api
-    output_results_list = output_results_df.to_dict(orient="records")
+    all_database_metadata_json = requests.get("https://idbac-kb.gnps2.org/api/spectra").json()
+    all_database_metadata_df = pd.DataFrame(all_database_metadata_json)
+    all_database_metadata_df = all_database_metadata_df[["database_id", "Strain name", "Culture Collection", "Sample name", "Genbank accession"]]
+    
+    # lets merge the results with the metadata
+    output_results_df = output_results_df.merge(all_database_metadata_df, left_on="database_id", right_on="database_id", how="left")
 
-    for result_dict in output_results_list:
-        database_id = result_dict["database_id"]
-
-        # getting the full information from cmmc
-        url = "https://idbac-kb.gnps2.org/api/spectrum"
-        params = {}
-        params["database_id"] = database_id
-
-        r = requests.get(url, params=params)
-
-        spectrum_dict = r.json()
-
-        result_dict["db_strain_name"] = spectrum_dict["Strain name"]
-        result_dict["db_culture_collection"] = spectrum_dict["Culture Collection"]
-        result_dict["db_sample_name"] = spectrum_dict["Sample name"]
-        result_dict["db_genbank_accession"] = spectrum_dict["Genbank accession"]
+    # rename columns
+    output_results_df = output_results_df.rename(columns={"Strain name": "db_strain_name", "Culture Collection": "db_culture_collection", "Sample name": "db_sample_name", "Genbank accession": "db_genbank_accession"})
     
     output_results_df = pd.DataFrame(output_results_list)
     output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
