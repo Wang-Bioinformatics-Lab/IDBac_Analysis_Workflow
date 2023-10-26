@@ -135,7 +135,6 @@ process enrichDatabaseSearch {
     output:
     file 'enriched_db_results.tsv'
     
-
     """
     python $TOOL_FOLDER/enrich_database_hits.py \
     $input_results \

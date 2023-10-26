@@ -252,16 +252,28 @@ def main():
     # Enrich the library information by hitting the web api
     output_results_list = output_results_df.to_dict(orient="records")
 
-    for result_dict in tqdm(output_results_list):
-        database_id = result_dict["database_id"]
+    all_database_metadata_json = requests.get("https://idbac-kb.gnps2.org/api/spectra").json()
+    all_database_metadata_df = pd.DataFrame(all_database_metadata_json)
+    all_database_metadata_df = all_database_metadata_df[["database_id", "Strain name", "Culture Collection", "Sample name", "Genbank accession"]]
 
-        # getting the full information from idbac
-        spectrum_dict = _retreive_kb_metadata(database_id)
+    # lets merge the results with the metadata
+    output_results_df = output_results_df.merge(all_database_metadata_df, left_on="database_id", right_on="database_id", how="left")
 
-        result_dict["db_strain_name"] = spectrum_dict["Strain name"]
-        result_dict["db_culture_collection"] = spectrum_dict["Culture Collection"]
-        result_dict["db_sample_name"] = spectrum_dict["Sample name"]
-        result_dict["db_genbank_accession"] = spectrum_dict["Genbank accession"]
+    # rename columns
+    output_results_df = output_results_df.rename(columns={"Strain name": "db_strain_name", "Culture Collection": "db_culture_collection", "Sample name": "db_sample_name", "Genbank accession": "db_genbank_accession"})
+
+    # for result_dict in tqdm(output_results_list):
+    #     database_id = result_dict["database_id"]
+
+
+
+    #     # getting the full information from idbac
+    #     spectrum_dict = _retreive_kb_metadata(database_id)
+
+    #     result_dict["db_strain_name"] = spectrum_dict["Strain name"]
+    #     result_dict["db_culture_collection"] = spectrum_dict["Culture Collection"]
+    #     result_dict["db_sample_name"] = spectrum_dict["Sample name"]
+    #     result_dict["db_genbank_accession"] = spectrum_dict["Genbank accession"]
     
     output_results_df = pd.DataFrame(output_results_list)
     output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)

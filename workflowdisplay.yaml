@@ -1,6 +1,27 @@
 name: idbac_analysis_workflow
 displayname: STUFF
 Views:
+-   name: Query Spectra Summary
+    displayname: Query Spectra Summary
+    viewname: results
+    displaytype: datatable
+    parameters:
+        filename: nf_output/query/summary.tsv
+        error_missingfile: "No File"
+        columns:
+            -   title: "Visualize"
+                data: 
+            -   title: "scan"
+                data: scan
+            -   title: "filename"
+                data: filename
+        columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
+        return `
+            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["filename"]}:scan:${row["scan"]}">View Spectrum in Resolver</a>
+            <br>
+            <a target="_blank" href="/dashboards/embedded/resolver/?usi=mzspec:GNPS2:TASK-${task}-nf_output/merged/${encodeURIComponent(row["filename"])}:scan:${encodeURIComponent(row["scan"])}">View in GNPS2</a>
+        `;}}]'
+
 -   name: Visualize Dendrogram
     displayname: Visualize Dendrogram
     viewname: visualize
@@ -27,27 +48,6 @@ Views:
         baseurl: /taskresult/[task]/file/nf_output/with_database.html
         urlparam:
             -   attachment:no
-
--   name: Spectra Summary
-    displayname: Spectra Summary
-    viewname: results
-    displaytype: datatable
-    parameters:
-        filename: nf_output/query/summary.tsv
-        error_missingfile: "No File"
-        columns:
-            -   title: "Visualize"
-                data: 
-            -   title: "scan"
-                data: scan
-            -   title: "filename"
-                data: filename
-        columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
-        return `
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["filename"]}:scan:${row["scan"]}">View Spectrum in Resolver</a>
-            <br>
-            <a target="_blank" href="/dashboards/embedded/resolver/?usi=mzspec:GNPS2:TASK-${task}-nf_output/merged/${encodeURIComponent(row["filename"])}:scan:${encodeURIComponent(row["scan"])}">View in GNPS2</a>
-        `;}}]'
 
 -   name: Dendrogram Similarity
     displayname: Dendrogram Similarity
