@@ -135,6 +135,7 @@ def main():
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
 
     output_results_list = []
+    #for input_filename in all_input_files[:5]:
     for input_filename in all_input_files:
         # Reading Query
         ms1_df, _ = load_data(input_filename)
@@ -235,6 +236,7 @@ def main():
                 output_results_list.append(result_dict)
 
     small_database_df = database_df[["row_count", "database_id"]]
+    small_database_df["database_scan"] = small_database_df["database_id"]
 
     output_results_df = pd.DataFrame(output_results_list)
     if len(output_results_df) == 0:
@@ -242,38 +244,22 @@ def main():
         open(args.output_results_tsv, "w").write("\n")
 
         exit(0)
-
-    print(output_results_df)
     
     # Here we want to take the results from the search
     output_results_df = output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
+    output_results_df["database_id"] = output_results_df["database_scan"]
     output_results_df["database_scan"] = output_results_df["row_count"] + 1
                 
     # Enrich the library information by hitting the web api
-    output_results_list = output_results_df.to_dict(orient="records")
-
     all_database_metadata_json = requests.get("https://idbac-kb.gnps2.org/api/spectra").json()
     all_database_metadata_df = pd.DataFrame(all_database_metadata_json)
     all_database_metadata_df = all_database_metadata_df[["database_id", "Strain name", "Culture Collection", "Sample name", "Genbank accession"]]
-
+    
     # lets merge the results with the metadata
     output_results_df = output_results_df.merge(all_database_metadata_df, left_on="database_id", right_on="database_id", how="left")
 
     # rename columns
     output_results_df = output_results_df.rename(columns={"Strain name": "db_strain_name", "Culture Collection": "db_culture_collection", "Sample name": "db_sample_name", "Genbank accession": "db_genbank_accession"})
-
-    # for result_dict in tqdm(output_results_list):
-    #     database_id = result_dict["database_id"]
-
-
-
-    #     # getting the full information from idbac
-    #     spectrum_dict = _retreive_kb_metadata(database_id)
-
-    #     result_dict["db_strain_name"] = spectrum_dict["Strain name"]
-    #     result_dict["db_culture_collection"] = spectrum_dict["Culture Collection"]
-    #     result_dict["db_sample_name"] = spectrum_dict["Sample name"]
-    #     result_dict["db_genbank_accession"] = spectrum_dict["Genbank accession"]
     
     output_results_df = pd.DataFrame(output_results_list)
     output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
