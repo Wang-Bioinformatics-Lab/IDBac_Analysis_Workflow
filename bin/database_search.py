@@ -64,6 +64,19 @@ def load_data(input_filename):
 def load_database(database_filtered_json):
     all_database_spectra = json.load(open(database_filtered_json))
 
+    formatted_database_spectra = []
+    for spectrum in all_database_spectra:
+        formatted_spectrum = {}
+        formatted_spectrum["database_id"] = spectrum["database_id"]
+
+        for peak in spectrum["peaks"]:
+            formatted_spectrum["BIN_" + str(int(peak["mz"] / bin_size))] = peak["i"]
+
+        formatted_database_spectra.append(formatted_spectrum)
+
+    return pd.DataFrame(formatted_database_spectra)
+    
+
     # Now we can make this into a dataframe that we can use as we did before
     
     # Now we need to create consensus spectra in the database
@@ -83,12 +96,7 @@ def load_database(database_filtered_json):
     # # Turning each scan into a 1d vector that is the intensity value for each bin
     # spectra_binned_df = db_spectra.pivot(index='scan', columns='bin_name', values='i').reset_index()
 
-    # # Mapping
-    # spectra_binned_df = spectra_binned_df.merge(db_scan_mapping_df, how="left", left_on="scan", right_on="scan")
-    
-
-    return merged_spectra_df
-
+    #return merged_spectra_df
 
 
 def main():
@@ -117,7 +125,6 @@ def main():
         # Reading Query
         ms1_df, _ = load_data(input_filename)
 
-        bin_size = 10.0
         max_mz = 15000.0
 
         # Filtering m/z
@@ -159,9 +166,8 @@ def main():
             # Now lets get the mean for each bin
             spectra_binned_df = spectra_binned_df.groupby("filename").mean().reset_index()
             spectra_binned_df["scan"] = "merged"
-
         
-        # Formatting Database
+        # Formatting Database to fill NAs
         
         # Turning each scan into a 1d vector that is the intensity value for each bin
         spectra_binned_db_df = database_df
@@ -196,7 +202,7 @@ def main():
         from sklearn.metrics.pairwise import cosine_similarity
         similarity_matrix = cosine_similarity(query_data_np, database_data_np)
 
-        print(similarity_matrix)
+        #print(similarity_matrix)
         for i, row in enumerate(similarity_matrix):
             for j, item in enumerate(row):
                 query_index = i
@@ -217,9 +223,7 @@ def main():
         # DEBUG
         # break
 
-    small_database_df = database_df[["row_count", "scan"]]
-    # rename the scan column to database_id
-    small_database_df = small_database_df.rename(columns={"scan": "database_id"})
+    small_database_df = database_df[["row_count", "database_id"]]
 
     output_results_df = pd.DataFrame(output_results_list)
     if len(output_results_df) == 0:
