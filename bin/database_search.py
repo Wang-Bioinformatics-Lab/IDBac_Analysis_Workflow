@@ -8,9 +8,23 @@ from pyteomics import mzxml, mzml
 from massql import msql_fileloading
 from tqdm import tqdm
 import glob
+from functools import lru_cache
 import numpy as np
 
 bin_size = 10.0
+
+# Create an LRU Cache from functools
+@lru_cache(maxsize=1000)
+def _retreive_kb_metadata(database_id):
+    url = "https://idbac-kb.gnps2.org/api/spectrum"
+    params = {}
+    params["database_id"] = database_id
+
+    r = requests.get(url, params=params)
+
+    spectrum_dict = r.json()
+
+    return spectrum_dict
 
 def load_data(input_filename):
     try:
@@ -219,9 +233,6 @@ def main():
                 result_dict["query_filename"] = os.path.basename(input_filename)
 
                 output_results_list.append(result_dict)
-        
-        # DEBUG
-        # break
 
     small_database_df = database_df[["row_count", "database_id"]]
 
@@ -241,17 +252,11 @@ def main():
     # Enrich the library information by hitting the web api
     output_results_list = output_results_df.to_dict(orient="records")
 
-    for result_dict in output_results_list:
+    for result_dict in tqdm(output_results_list):
         database_id = result_dict["database_id"]
 
-        # getting the full information from cmmc
-        url = "https://idbac-kb.gnps2.org/api/spectrum"
-        params = {}
-        params["database_id"] = database_id
-
-        r = requests.get(url, params=params)
-
-        spectrum_dict = r.json()
+        # getting the full information from idbac
+        spectrum_dict = _retreive_kb_metadata(database_id)
 
         result_dict["db_strain_name"] = spectrum_dict["Strain name"]
         result_dict["db_culture_collection"] = spectrum_dict["Culture Collection"]
