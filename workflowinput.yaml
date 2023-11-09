@@ -62,7 +62,7 @@ parameterlist:
       formvalue: "0.7"
       tooltip: "database_search_threshold"
 
-    - displayname: Metadata Colum to Display
+    - displayname: Metadata Column to Display
       paramtype: text
       nf_paramname: metadata_column
       formplaceholder: Enter the metadata_column
