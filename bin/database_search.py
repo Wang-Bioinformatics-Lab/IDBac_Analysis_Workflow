@@ -260,8 +260,8 @@ def main():
 
     # rename columns
     output_results_df = output_results_df.rename(columns={"Strain name": "db_strain_name", "Culture Collection": "db_culture_collection", "Sample name": "db_sample_name", "Genbank accession": "db_genbank_accession"})
-    
-    output_results_df = pd.DataFrame(output_results_list)
+
+    # Output data
     output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
 
     

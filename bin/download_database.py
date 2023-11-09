@@ -24,14 +24,22 @@ def main():
     for spectrum in all_spectra_list:
         database_id = spectrum["database_id"]
 
+        # TODO: Download everything all at once
+
         url = "https://idbac-kb.gnps2.org/api/spectrum/filtered"
         params = {}
         params["database_id"] = database_id
 
-        r = requests.get(url, params=params)
+        try:
+            r = requests.get(url, params=params)
 
-        spectrum_dict = r.json()
-        spectrum_dict["database_id"] = database_id
+            # raise for status
+            r.raise_for_status()
+
+            spectrum_dict = r.json()
+            spectrum_dict["database_id"] = database_id
+        except:
+            continue
 
         # add to json list
         output_spectra_list.append(spectrum_dict)
