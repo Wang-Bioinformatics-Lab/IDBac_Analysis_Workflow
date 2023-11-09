@@ -207,7 +207,7 @@ def main():
     import plotly.figure_factory as ff
 
     dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun)
-    dendro.update_layout(width=800, height=max(15*len(all_labels_list), 250))
+    dendro.update_layout(width=800, height=max(15*len(all_labels_list), 350))
     dendro.write_html(args.output_basic_html_plot)
 
     # Making using metadata
@@ -230,7 +230,7 @@ def main():
 
         # Creating Dendrogram
         dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun, colorscale=leaf_colors)
-        dendro.update_layout(width=800, height=max(15*len(all_labels_list), 250))
+        dendro.update_layout(width=800, height=max(15*len(all_labels_list), 350))
 
         # Setting the leaf colors
         # dendro['data'][0]['textfont']['color'] = leaf_colors
@@ -301,7 +301,7 @@ def main():
 
         # Creating Dendrogram
         dendro = ff.create_dendrogram(data_np, orientation='left', labels=refined_labels_list, distfun=selected_distance_fun)
-        dendro.update_layout(width=800, height=max(15*len(all_labels_list), 250))
+        dendro.update_layout(width=800, height=max(15*len(all_labels_list), 350))
 
         dendro.write_html(args.output_db_html_plot)
 
