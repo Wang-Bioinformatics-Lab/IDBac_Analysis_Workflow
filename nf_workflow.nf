@@ -52,7 +52,7 @@ process mergeInputSpectra {
     """
 }
 
-process processData {
+process createDendrogram {
     publishDir "./nf_output", mode: 'copy'
 
     cache false
@@ -182,6 +182,6 @@ workflow {
 
     // Creating Spectra Dendrogram
     metadata_file_ch = Channel.fromPath(params.input_metadata_file)
-    processData(baseline_query_spectra_ch.collect(), metadata_file_ch, enriched_results_db_ch)
+    createDendrogram(baseline_query_spectra_ch.collect(), metadata_file_ch, enriched_results_db_ch)
 
 }
