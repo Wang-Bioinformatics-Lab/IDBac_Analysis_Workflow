@@ -71,7 +71,7 @@ process createDendrogram {
     file "output_similarity_table.tsv" optional true
 
     """
-    python $TOOL_FOLDER/process_data.py \
+    python $TOOL_FOLDER/create_dendrogram.py \
     input_spectra \
     $metadata_file \
     $database_hits \
