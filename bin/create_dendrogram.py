@@ -85,6 +85,9 @@ def main():
     parser.add_argument('output_db_html_plot')
     parser.add_argument('output_similarity_table')
 
+    # These are outputs for recreating the histogram
+    parser.add_argument('output_histogram_data_directory')
+
     parser.add_argument('--merge_replicates', default="No")
     parser.add_argument('--similarity', default="cosine")
     parser.add_argument('--metadata_column', default="None")
@@ -210,6 +213,18 @@ def main():
     dendro.update_layout(width=800, height=max(15*len(all_labels_list), 350))
     dendro.write_html(args.output_basic_html_plot)
 
+    # Saving the output data to create the dendrograms
+    output_numerical_spectra_filename = os.path.join(args.output_histogram_data_directory, "numerical_spectra.npy")
+    output_labels_spectra_filename = os.path.join(args.output_histogram_data_directory, "labels_spectra.tsv")
+
+    # Saving the data
+    with open(output_numerical_spectra_filename, "wb") as output_file:
+        np.save(output_file, data_np)
+
+    # Saving the labels
+    all_spectra_df.to_csv(output_labels_spectra_filename, sep="\t", index=False)
+
+
     # Making using metadata
     try:
         # Selecting the column to visualize
@@ -277,6 +292,8 @@ def main():
 
     except:
         pass
+
+    
 
     # Making using database hits
     try:

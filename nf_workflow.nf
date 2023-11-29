@@ -69,8 +69,11 @@ process createDendrogram {
     file 'with_metadata.html' optional true
     file 'with_database.html' optional true
     file "output_similarity_table.tsv" optional true
+    file "output_histogram_data_directory"  optional true
 
     """
+    mkdir output_histogram_data_directory
+
     python $TOOL_FOLDER/create_dendrogram.py \
     input_spectra \
     $metadata_file \
@@ -79,6 +82,7 @@ process createDendrogram {
     with_metadata.html \
     with_database.html \
     output_similarity_table.tsv \
+    output_histogram_data_directory \
     --merge_replicates ${params.merge_replicates} \
     --similarity ${params.similarity} \
     --metadata_column "${params.metadata_column}"
