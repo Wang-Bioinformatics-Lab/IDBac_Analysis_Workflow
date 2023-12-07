@@ -4,6 +4,8 @@ import argparse
 import pandas as pd
 import uuid
 import json
+import numpy as np
+
 from massql import msql_fileloading
 from pyteomics import mzxml, mzml
 from tqdm import tqdm
@@ -216,6 +218,10 @@ def main():
     # Saving the output data to create the dendrograms
     output_numerical_spectra_filename = os.path.join(args.output_histogram_data_directory, "numerical_spectra.npy")
     output_labels_spectra_filename = os.path.join(args.output_histogram_data_directory, "labels_spectra.tsv")
+
+    # Saving out the metadata
+    if metadata_df is not None:
+        metadata_df.to_csv(os.path.join(args.output_histogram_data_directory, "metadata.tsv"), sep="\t", index=False)
 
     # Saving the data
     with open(output_numerical_spectra_filename, "wb") as output_file:
