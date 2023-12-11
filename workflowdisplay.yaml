@@ -40,15 +40,6 @@ Views:
         urlparam:
             -   attachment:no
 
--   name: Visualize Dendrogram with Database Hits
-    displayname: Visualize with Database Hits
-    viewname: visualizewithdb
-    displaytype: linkout
-    parameters:
-        baseurl: /taskresult/[task]/file/nf_output/with_database.html
-        urlparam:
-            -   attachment:no
-
 -   name: Dendrogram Similarity
     displayname: Dendrogram Similarity
     viewname: dendrogramresults
@@ -120,3 +111,17 @@ Views:
             <br>
             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Mirror - Local</a>
         `;}}]'
+
+-   name: section
+    displayname: Interactive Visualization Section
+    viewname: section
+    displaytype: section
+
+-   name: Downstream Interactive IDBac Analysis
+    displayname: Downstream Interactive IDBac Analysis
+    viewname: downstreamanalysis
+    displaytype: linkout
+    parameters:
+        baseurl: https://analysis.idbac.org/
+        urlparam:
+            -   task:[task]
