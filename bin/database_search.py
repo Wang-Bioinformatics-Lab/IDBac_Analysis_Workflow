@@ -11,6 +11,9 @@ import glob
 from functools import lru_cache
 import numpy as np
 
+
+from utils import load_data
+
 bin_size = 10.0
 
 # Create an LRU Cache from functools
