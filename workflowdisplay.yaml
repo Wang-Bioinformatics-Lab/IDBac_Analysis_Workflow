@@ -1,6 +1,19 @@
 name: idbac_analysis_workflow
 displayname: STUFF
 Views:
+-   name: Downstream Interactive IDBac Analysis
+    displayname: Downstream Interactive IDBac Analysis
+    viewname: downstreamanalysis
+    displaytype: linkout
+    parameters:
+        baseurl: https://analysis.idbac.org/
+        urlparam:
+            -   task:[task]
+-   name: section
+    displayname: Output Tables
+    viewname: section
+    displaytype: section
+
 -   name: Query Spectra Summary
     displayname: Query Spectra Summary
     viewname: results
@@ -22,54 +35,54 @@ Views:
             <a target="_blank" href="/dashboards/embedded/resolver/?usi=mzspec:GNPS2:TASK-${task}-nf_output/merged/${encodeURIComponent(row["filename"])}:scan:${encodeURIComponent(row["scan"])}">View in GNPS2</a>
         `;}}]'
 
--   name: Visualize Dendrogram
-    displayname: Visualize Dendrogram
-    viewname: visualize
-    displaytype: linkout
-    parameters:
-        baseurl: /taskresult/[task]/file/nf_output/output.html
-        urlparam:
-            -   attachment:no
+# -   name: Visualize Dendrogram
+#     displayname: Visualize Dendrogram
+#     viewname: visualize
+#     displaytype: linkout
+#     parameters:
+#         baseurl: /taskresult/[task]/file/nf_output/output.html
+#         urlparam:
+#             -   attachment:no
 
--   name: Visualize Dendrogram with Metadata
-    displayname: Visualize with Metadata
-    viewname: visualizewithmetadata
-    displaytype: linkout
-    parameters:
-        baseurl: /taskresult/[task]/file/nf_output/with_metadata.html
-        urlparam:
-            -   attachment:no
+# -   name: Visualize Dendrogram with Metadata
+#     displayname: Visualize with Metadata
+#     viewname: visualizewithmetadata
+#     displaytype: linkout
+#     parameters:
+#         baseurl: /taskresult/[task]/file/nf_output/with_metadata.html
+#         urlparam:
+#             -   attachment:no
 
--   name: Dendrogram Similarity
-    displayname: Dendrogram Similarity
-    viewname: dendrogramresults
-    displaytype: datatable
-    parameters:
-        filename: nf_output/output_similarity_table.tsv
-        error_missingfile: "No File"
-        columns:
-            -   title: "View Match"
-                data: "label_i"
-            -   title: "label_i"
-                data: "label_i"
-            -   title: "label_j"
-                data: "label_j"
-            -   title: "similarity"
-                data: "similarity"
-        columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
-        return `
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1">View Spectrum 1 - Resolver</a>
-            <br>
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Spectrum 2 - Resolver</a>
-            <br>
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Mirror - Resolver</a>
-            <br>
-            <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1">View Spectrum 1 - Local</a>
-            <br>
-            <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Spectrum 2 - Local</a>
-            <br>
-            <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Mirror - Local</a>
-        `;}}]'
+# -   name: Dendrogram Similarity
+#     displayname: Dendrogram Similarity
+#     viewname: dendrogramresults
+#     displaytype: datatable
+#     parameters:
+#         filename: nf_output/output_similarity_table.tsv
+#         error_missingfile: "No File"
+#         columns:
+#             -   title: "View Match"
+#                 data: "label_i"
+#             -   title: "label_i"
+#                 data: "label_i"
+#             -   title: "label_j"
+#                 data: "label_j"
+#             -   title: "similarity"
+#                 data: "similarity"
+#         columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
+#         return `
+#             <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1">View Spectrum 1 - Resolver</a>
+#             <br>
+#             <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Spectrum 2 - Resolver</a>
+#             <br>
+#             <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Mirror - Resolver</a>
+#             <br>
+#             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1">View Spectrum 1 - Local</a>
+#             <br>
+#             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Spectrum 2 - Local</a>
+#             <br>
+#             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Mirror - Local</a>
+#         `;}}]'
 
 -   name: Database Search Summary
     displayname: Database Search Summary
@@ -111,17 +124,3 @@ Views:
             <br>
             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Mirror - Local</a>
         `;}}]'
-
--   name: section
-    displayname: Interactive Visualization Section
-    viewname: section
-    displaytype: section
-
--   name: Downstream Interactive IDBac Analysis
-    displayname: Downstream Interactive IDBac Analysis
-    viewname: downstreamanalysis
-    displaytype: linkout
-    parameters:
-        baseurl: https://analysis.idbac.org/
-        urlparam:
-            -   task:[task]
