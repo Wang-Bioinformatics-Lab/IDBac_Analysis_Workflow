@@ -63,12 +63,71 @@ def load_database(database_filtered_json):
 
     #return merged_spectra_df
 
+def compute_db_db_similarity(database_df, db_numerical_columns, output_path, similarity_metric="cosine"):
+    """ This function computes the pairwise similarity between the the database results in the first 
+    argument, and themselves. This is used to fill out the remainder of the similarity matrix.
+    
+    Args:
+    database_df: pd.DataFrame
+        The database results dataframe
+    db_numerical_columns: list
+        The list of numerical columns in the database dataframe
+    output_path: str
+        The path to save the results
+    similarity_metric: str (default: "cosine")
+        The similarity metric to use for the search
+        
+    Returns:
+    output_results_df: pd.DataFrame
+        The results of the database similarity search with the following columns:
+        ["left_index", "right_index", "database_id_left", "database_id_right", "database_scan_left", "database_scan_right", "similarity"]
+    """
+    database_data_np = database_df[db_numerical_columns].to_numpy()
+    db_db_similarity_matrix = compute_distances_binned(database_data_np, similarity_metric=similarity_metric)
+    
+    output_results_list = []
+    
+    for i, row in enumerate(db_db_similarity_matrix):
+        for j, item in enumerate(row[i+1:]):    # Skip the diagonal, to save some time
+            left_index = i
+            right_index = j
+            similarity = item
+
+            # Upper diagonal
+            result_dict = {}
+            result_dict["left_index"] = left_index
+            result_dict["right_index"] = right_index
+            result_dict["database_id_left"] = database_df.iloc[left_index]["database_id"]
+            result_dict["database_id_right"] = database_df.iloc[right_index]["database_id"]
+            result_dict["database_scan_left"] = database_df.iloc[left_index]["database_scan"]
+            result_dict["database_scan_right"] = database_df.iloc[right_index]["database_scan"]
+            result_dict["similarity"] = similarity
+
+            output_results_list.append(result_dict)
+            
+            # Lower diagonal
+            result_dict = {}
+            result_dict["left_index"] = right_index
+            result_dict["right_index"] = left_index
+            result_dict["database_id_left"] = database_df.iloc[right_index]["database_id"]
+            result_dict["database_id_right"] = database_df.iloc[left_index]["database_id"]
+            result_dict["database_scan_left"] = database_df.iloc[right_index]["database_scan"]
+            result_dict["database_scan_right"] = database_df.iloc[left_index]["database_scan"]
+            result_dict["similarity"] = similarity
+            
+            output_results_list.append(result_dict)
+            
+    output_results_df = pd.DataFrame(output_results_list)
+    output_results_df.to_csv(output_path, sep="\t", index=False)
+    
+    return output_results_df
 
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
     parser.add_argument('database_filtered_json')
     parser.add_argument('output_results_tsv')
+    parser.add_argument('output_db_db_similarity_tsv')
     parser.add_argument('--merge_replicates', default="Yes")
     parser.add_argument('--score_threshold', default=0.7, type=float)
     parser.add_argument('--similarity', default="cosine", help="The similarity metric to use for the search", choices=["cosine", "euclidean", "manhattan"])
@@ -105,7 +164,6 @@ def main():
         spectra_binned_db_df = database_df
 
         query_numerical_columns = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
-
         merged_numerical_columns = list(set(query_numerical_columns + db_numerical_columns))
 
         # Fill in the missing values with 0
@@ -165,6 +223,10 @@ def main():
     output_results_df = output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
     output_results_df["database_id"] = output_results_df["database_scan"]
     output_results_df["database_scan"] = output_results_df["row_count"] + 1
+                
+    # Perform pairwise similarity of database result hits to fill out the remainder of the similarity matrix.
+    database_results_df = output_results_df[["database_id", "database_scan", ""]].drop_duplicates()
+    compute_db_db_similarity(database_df, db_numerical_columns, args.output_db_db_similarity_tsv, similarity_metric=args.similarity)
                 
     # Enrich the library information by hitting the web api
     all_database_metadata_json = requests.get("https://idbac-kb.gnps2.org/api/spectra").json()

@@ -117,12 +117,14 @@ process databaseSearch {
 
     output:
     file 'db_results.tsv'
+    file 'db_db_similarity.tsv'
 
     """
     python $TOOL_FOLDER/database_search.py \
     input_spectra \
     $idbac_database_filtered_json \
     db_results.tsv \
+    db_db_similarity.tsv \
     --merge_replicates ${params.merge_replicates} \
     --score_threshold ${params.database_search_threshold}
     """
