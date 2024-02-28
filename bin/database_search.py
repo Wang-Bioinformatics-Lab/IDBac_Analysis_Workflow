@@ -88,11 +88,11 @@ def compute_db_db_similarity(database_df, db_numerical_columns, output_path, sim
     output_results_list = []
     
     for i, row in enumerate(db_db_similarity_matrix):
-        for j, item in enumerate(row[i+1:]):    # Skip the diagonal, to save some time
+        for j in range (i+1, len(row)):         # Skip the diagonal, to save some time
+            similarity = db_db_similarity_matrix[i][j]
             left_index = i
             right_index = j
-            similarity = item
-
+            
             # Upper diagonal
             result_dict = {}
             result_dict["left_index"] = left_index
@@ -223,10 +223,18 @@ def main():
     output_results_df = output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
     output_results_df["database_id"] = output_results_df["database_scan"]
     output_results_df["database_scan"] = output_results_df["row_count"] + 1
-                
+    
+    # Sanity Check: We assume these to be unique below
+    if len(database_df.database_id.unique()) != len(database_df.database_id):
+        raise ValueError("Database ID is not unique")
+    
     # Perform pairwise similarity of database result hits to fill out the remainder of the similarity matrix.
-    database_results_df = output_results_df[["database_id", "database_scan", ""]].drop_duplicates()
-    compute_db_db_similarity(database_df, db_numerical_columns, args.output_db_db_similarity_tsv, similarity_metric=args.similarity)
+    database_results_df = output_results_df[["database_id", "database_scan"]].drop_duplicates()
+
+    # Add numerical columns to the database results, for the similarity calculation
+    database_results_df = database_results_df.merge(database_df, left_on="database_id", right_on="database_id", how="left")
+    
+    compute_db_db_similarity(database_results_df, db_numerical_columns, args.output_db_db_similarity_tsv, similarity_metric=args.similarity)
                 
     # Enrich the library information by hitting the web api
     all_database_metadata_json = requests.get("https://idbac-kb.gnps2.org/api/spectra").json()
