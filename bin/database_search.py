@@ -16,7 +16,7 @@ bin_size = 10.0
 # Create an LRU Cache from functools
 @lru_cache(maxsize=1000)
 def _retreive_kb_metadata(database_id):
-    url = "https://idbac-kb.gnps2.org/api/spectrum"
+    url = "https://idbac.org/api/spectrum"
     params = {}
     params["database_id"] = database_id
 

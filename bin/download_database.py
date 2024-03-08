@@ -12,7 +12,7 @@ def main():
     args = parser.parse_args()
 
     # Let's read the spectra from idbac kb
-    url = "https://idbac-kb.gnps2.org/api/spectra"
+    url = "https://idbac.org/api/spectra"
 
     r = requests.get(url)
     all_spectra_list = r.json()
