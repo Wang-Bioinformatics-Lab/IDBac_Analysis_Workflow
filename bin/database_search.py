@@ -117,6 +117,12 @@ def compute_db_db_distance(database_df, db_numerical_columns, output_path, dista
             
             output_results_list.append(result_dict)
             
+    if len(output_results_list) == 0:
+        # Save an empty dataframe with a header
+        output_results_df = pd.DataFrame(columns=["left_index", "right_index", "database_id_left", "database_id_right", "database_scan_left", "database_scan_right", "distance"])
+        output_results_df.to_csv(output_path, sep="\t", index=False)
+        return output_results_df
+                    
     output_results_df = pd.DataFrame(output_results_list)
     output_results_df.to_csv(output_path, sep="\t", index=False)
     
