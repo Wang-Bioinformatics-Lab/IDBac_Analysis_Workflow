@@ -122,16 +122,16 @@ def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=10.0, max_
     
     return spectra_binned_df
 
-def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, similarity_metric:str='cosine'):
+def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, distance_metric:str='cosine'):
     
-    if similarity_metric not in ['cosine', 'euclidean', 'presence']:
-        raise ValueError(f'Invalid similarity metric. Expected "cosine", "euclidean", or "presence", but got {similarity_metric}')
+    if distance_metric not in ['cosine', 'euclidean', 'presence']:
+        raise ValueError(f'Invalid distance metric. Expected "cosine", "euclidean", or "presence", but got {distance_metric}')
     
-    if similarity_metric == "cosine":
+    if distance_metric == "cosine":
         selected_distance_fun = cosine_distances
-    elif similarity_metric == "euclidean":
+    elif distance_metric == "euclidean":
         selected_distance_fun = euclidean_distances
-    elif similarity_metric == "presence":
+    elif distance_metric == "presence":
         selected_distance_fun = cosine_distances
         np_data_X[np_data_X > 0] = 1
         if np_data_Y is not None:

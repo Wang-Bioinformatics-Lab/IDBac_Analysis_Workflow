@@ -16,7 +16,7 @@ bin_size = 10.0
 # Create an LRU Cache from functools
 @lru_cache(maxsize=1000)
 def _retreive_kb_metadata(database_id):
-    url = "https://idbac-kb.gnps2.org/api/spectrum"
+    url = "https://idbac.org/api/spectrum"
     params = {}
     params["database_id"] = database_id
 
@@ -63,9 +63,9 @@ def load_database(database_filtered_json):
 
     #return merged_spectra_df
 
-def compute_db_db_similarity(database_df, db_numerical_columns, output_path, similarity_metric="cosine"):
-    """ This function computes the pairwise similarity between the the database results in the first 
-    argument, and themselves. This is used to fill out the remainder of the similarity matrix.
+def compute_db_db_distance(database_df, db_numerical_columns, output_path, distance_metric="cosine"):
+    """ This function computes the pairwise distance between the the database results in the first 
+    argument, and themselves. This is used to fill out the remainder of the distance matrix.
     
     Args:
     database_df: pd.DataFrame
@@ -74,22 +74,22 @@ def compute_db_db_similarity(database_df, db_numerical_columns, output_path, sim
         The list of numerical columns in the database dataframe
     output_path: str
         The path to save the results
-    similarity_metric: str (default: "cosine")
-        The similarity metric to use for the search
+    distance_metric: str (default: "cosine")
+        The distance metric to use for the search
         
     Returns:
     output_results_df: pd.DataFrame
-        The results of the database similarity search with the following columns:
-        ["left_index", "right_index", "database_id_left", "database_id_right", "database_scan_left", "database_scan_right", "similarity"]
+        The results of the database distance search with the following columns:
+        ["left_index", "right_index", "database_id_left", "database_id_right", "database_scan_left", "database_scan_right", "distance"]
     """
     database_data_np = database_df[db_numerical_columns].to_numpy()
-    db_db_similarity_matrix = compute_distances_binned(database_data_np, similarity_metric=similarity_metric)
+    db_db_distance = compute_distances_binned(database_data_np, distance_metric=distance_metric)
     
     output_results_list = []
     
-    for i, row in enumerate(db_db_similarity_matrix):
+    for i, row in enumerate(db_db_distance):
         for j in range (i+1, len(row)):         # Skip the diagonal, to save some time
-            similarity = db_db_similarity_matrix[i][j]
+            distance = db_db_distance[i][j]
             left_index = i
             right_index = j
             
@@ -101,7 +101,7 @@ def compute_db_db_similarity(database_df, db_numerical_columns, output_path, sim
             result_dict["database_id_right"] = database_df.iloc[right_index]["database_id"]
             result_dict["database_scan_left"] = database_df.iloc[left_index]["database_scan"]
             result_dict["database_scan_right"] = database_df.iloc[right_index]["database_scan"]
-            result_dict["similarity"] = similarity
+            result_dict["distance"] = distance
 
             output_results_list.append(result_dict)
             
@@ -113,7 +113,7 @@ def compute_db_db_similarity(database_df, db_numerical_columns, output_path, sim
             result_dict["database_id_right"] = database_df.iloc[left_index]["database_id"]
             result_dict["database_scan_left"] = database_df.iloc[right_index]["database_scan"]
             result_dict["database_scan_right"] = database_df.iloc[left_index]["database_scan"]
-            result_dict["similarity"] = similarity
+            result_dict["distance"] = distance
             
             output_results_list.append(result_dict)
             
@@ -127,11 +127,12 @@ def main():
     parser.add_argument('input_folder')
     parser.add_argument('database_filtered_json')
     parser.add_argument('output_results_tsv')
-    parser.add_argument('output_db_db_similarity_tsv')
+    parser.add_argument('complete_output_results_tsv')
+    parser.add_argument('output_db_db_distance_tsv')
     parser.add_argument('--merge_replicates', default="Yes")
     parser.add_argument('--score_threshold', default=0.7, type=float)
-    parser.add_argument('--similarity', default="cosine", help="The similarity metric to use for the search", choices=["cosine", "euclidean", "manhattan"])
-    parser.add_argument('--bin_size', default=10.0, type=float, help="Size of the spectra bins for similarity calculations.")
+    parser.add_argument('--distance', default="cosine", help="The distance metric to use for the search", choices=["cosine", "euclidean", "manhattan"])
+    parser.add_argument('--bin_size', default=10.0, type=float, help="Size of the spectra bins for distance calculations.")
     
     args = parser.parse_args()
 
@@ -188,34 +189,53 @@ def main():
 
         database_data_np = spectra_binned_db_df[merged_numerical_columns].to_numpy()
 
-        # Now lets do pairwise cosine similarity
-        similarity_matrix = compute_distances_binned(query_data_np, database_data_np, similarity_metric=args.similarity)
+        # Now lets do pairwise cosine distance
+        distance_matrix = compute_distances_binned(query_data_np, database_data_np, distance_metric=args.distance)
 
-        #print(similarity_matrix)
-        for i, row in enumerate(similarity_matrix):
+        #print(distance_matrix)
+        for i, row in enumerate(distance_matrix):
             for j, item in enumerate(row):
                 query_index = i
                 database_index = j
-                similarity = item
+                distance = item
 
-                if similarity < args.score_threshold:
-                    continue
+                if distance < args.score_threshold:
+                    result_dict = {}
+                    result_dict["query_index"] = query_index
+                    result_dict["database_index"] = database_index
+                    result_dict["distance"] = distance
+                    result_dict["query_filename"] = os.path.basename(input_filename)
 
+                    output_results_list.append(result_dict)
+                    
+        # We will also need a complete distance_matrix for the query-db pairs (in contrast to the above on that's trimmed by the score_threshold)
+        complete_output_results_list = []
+        # Get columns where there is at least one match less than threshold
+        thresholded_indices = np.where(np.any(distance_matrix < args.score_threshold, axis=0))[0]
+        for i, row in enumerate(distance_matrix):
+            for j in thresholded_indices:
+                distance = row[j]
+                query_index = i
+                database_index = j
+                
                 result_dict = {}
                 result_dict["query_index"] = query_index
                 result_dict["database_index"] = database_index
-                result_dict["similarity"] = similarity
+                result_dict["distance"] = distance
                 result_dict["query_filename"] = os.path.basename(input_filename)
-
-                output_results_list.append(result_dict)
+                
+                complete_output_results_list.append(result_dict)
+                
 
     small_database_df = database_df[["row_count", "database_id"]]
     small_database_df["database_scan"] = small_database_df["database_id"]
 
     output_results_df = pd.DataFrame(output_results_list)
+    complete_output_results_df = pd.DataFrame(complete_output_results_list)
     if len(output_results_df) == 0:
         print("No matches found")
         open(args.output_results_tsv, "w").write("\n")
+        open(args.complete_output_results_tsv, "w").write("\n")
 
         exit(0)
     
@@ -223,35 +243,35 @@ def main():
     output_results_df = output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
     output_results_df["database_id"] = output_results_df["database_scan"]
     output_results_df["database_scan"] = output_results_df["row_count"] + 1
+    complete_output_results_df = complete_output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
     
     # Sanity Check: We assume these to be unique below
     if len(database_df.database_id.unique()) != len(database_df.database_id):
         raise ValueError("Database ID is not unique")
     
-    # Perform pairwise similarity of database result hits to fill out the remainder of the similarity matrix.
+    # Perform pairwise distance of database result hits to fill out the remainder of the distance matrix.
     database_results_df = output_results_df[["database_id", "database_scan"]].drop_duplicates()
 
-    # Add numerical columns to the database results, for the similarity calculation
+    # Add numerical columns to the database results, for the distance calculation
     database_results_df = database_results_df.merge(database_df, left_on="database_id", right_on="database_id", how="left")
     
-    compute_db_db_similarity(database_results_df, db_numerical_columns, args.output_db_db_similarity_tsv, similarity_metric=args.similarity)
+    compute_db_db_distance(database_results_df, db_numerical_columns, args.output_db_db_distance_tsv, distance_metric=args.distance)
                 
     # Enrich the library information by hitting the web api
-    all_database_metadata_json = requests.get("https://idbac-kb.gnps2.org/api/spectra").json()
+    all_database_metadata_json = requests.get("https://idbac.org/api/spectra").json()
     all_database_metadata_df = pd.DataFrame(all_database_metadata_json)
     all_database_metadata_df = all_database_metadata_df[["database_id", "Strain name", "Culture Collection", "Sample name", "Genbank accession"]]
     
     # lets merge the results with the metadata
     output_results_df = output_results_df.merge(all_database_metadata_df, left_on="database_id", right_on="database_id", how="left")
+    complete_output_results_df = complete_output_results_df.merge(all_database_metadata_df, left_on="database_id", right_on="database_id", how="left")
 
     # rename columns
     output_results_df = output_results_df.rename(columns={"Strain name": "db_strain_name", "Culture Collection": "db_culture_collection", "Sample name": "db_sample_name", "Genbank accession": "db_genbank_accession"})
 
     # Output data
     output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
-
-    
-
+    complete_output_results_df.to_csv(args.complete_output_results_tsv, sep="\t", index=False)
 
 
 if __name__ == '__main__':

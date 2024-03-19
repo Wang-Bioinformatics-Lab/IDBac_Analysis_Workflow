@@ -36,15 +36,15 @@ def main():
     parser.add_argument('output_basic_html_plot')
     parser.add_argument('output_metadata_html_plot')
     parser.add_argument('output_db_html_plot')
-    parser.add_argument('output_similarity_table')
+    parser.add_argument('output_distance_table')
 
     # These are outputs for recreating the histogram
     parser.add_argument('output_histogram_data_directory')
 
     parser.add_argument('--merge_replicates', default="No")
-    parser.add_argument('--similarity', default="cosine")
+    parser.add_argument('--distance', default="cosine")
     parser.add_argument('--metadata_column', default="None")
-    parser.add_argument('--bin_size', default=10.0, type=float, help="Size of the spectra bins for similarity calculations.")
+    parser.add_argument('--bin_size', default=10.0, type=float, help="Size of the spectra bins for distance calculations.")
 
     args = parser.parse_args()
 
@@ -87,7 +87,7 @@ def main():
     all_labels_list = all_spectra_df["label"].to_list()
 
     # Calculating the distances between all the spectra
-    similarity_matrix = compute_distances_binned(data_np, similarity_metric=args.similarity)
+    distance_matrix = compute_distances_binned(data_np, distance_metric=args.distance)
 
     # Merge in the labels
     output_scores_list = []
@@ -102,22 +102,22 @@ def main():
             output_dict = {}
             output_dict["label_i"] = label_i
             output_dict["label_j"] = label_j
-            output_dict["similarity"] = similarity_matrix[index_i][index_j]
+            output_dict["distance"] = distance_matrix[index_i][index_j]
 
             output_scores_list.append(output_dict)
 
     output_scores_df = pd.DataFrame(output_scores_list)
-    output_scores_df.to_csv(args.output_similarity_table, sep="\t", index=False)
+    output_scores_df.to_csv(args.output_distance_table, sep="\t", index=False)
 
     # Lets make this into a dendrogram
     import plotly.figure_factory as ff
 
     from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
-    if args.similarity == "cosine":
+    if args.distance == "cosine":
         selected_distance_fun = cosine_distances
-    elif args.similarity == "euclidean":
+    elif args.distance == "euclidean":
         selected_distance_fun = euclidean_distances
-    elif args.similarity == "presence":
+    elif args.distance == "presence":
         selected_distance_fun = cosine_distances
         data_np[data_np > 0] = 1
 
@@ -215,8 +215,8 @@ def main():
     try:
         input_database_hits_df = pd.read_csv(args.input_database_hits, sep="\t")
         
-        # sort by similarity
-        input_database_hits_df = input_database_hits_df.sort_values(by="similarity", ascending=False)
+        # sort by distance
+        input_database_hits_df = input_database_hits_df.sort_values(by="distance", ascending=False)
 
         # Picking the best one
         input_database_hits_df = input_database_hits_df.groupby("query_filename").first().reset_index()

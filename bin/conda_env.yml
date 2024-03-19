@@ -3,9 +3,9 @@ channels:
   - defaults
 dependencies:
   - python=3.8.8
-  - pandas
   - openpyxl
   - pip:
+    - pandas
     - massql
     - requests
     - python-dotenv
