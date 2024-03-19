@@ -242,6 +242,7 @@ def main():
         print("No matches found")
         open(args.output_results_tsv, "w").write("\n")
         open(args.complete_output_results_tsv, "w").write("\n")
+        open(arg.output_db_db_distance_tsv, "w").write("\n")
 
         exit(0)
     
