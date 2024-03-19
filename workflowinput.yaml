@@ -43,9 +43,9 @@ parameterlist:
         - value: "Yes"
           display: "Yes"
 
-    - displayname: Similarity Method
+    - displayname: Distance Metric
       paramtype: select
-      nf_paramname: similarity
+      nf_paramname: distance
       formvalue: "presence"
       options:
         - value: "presence"
@@ -59,7 +59,7 @@ parameterlist:
       paramtype: text
       nf_paramname: database_search_threshold
       formplaceholder: Enter the Database Search Threshold
-      formvalue: "0.7"
+      formvalue: "0.3"
       tooltip: "database_search_threshold"
 
     - displayname: Metadata Column to Display

@@ -5,7 +5,7 @@ params.input_spectra_folder = ""
 params.input_metadata_file = ""
 
 params.merge_replicates = "No"
-params.similarity = "presence"
+params.distance = "presence"
 params.database_search_threshold = "0.7"
 
 params.metadata_column = "None"
@@ -68,7 +68,7 @@ process createDendrogram {
     file 'output.html' optional true
     file 'with_metadata.html' optional true
     file 'with_database.html' optional true
-    file "output_similarity_table.tsv" optional true
+    file "output_distance_table.tsv" optional true
     file "output_histogram_data_directory"  optional true
 
     """
@@ -81,10 +81,10 @@ process createDendrogram {
     output.html \
     with_metadata.html \
     with_database.html \
-    output_similarity_table.tsv \
+    output_distance_table.tsv \
     output_histogram_data_directory \
     --merge_replicates ${params.merge_replicates} \
-    --similarity ${params.similarity} \
+    --distance ${params.distance} \
     --metadata_column "${params.metadata_column}"
     """
 }
@@ -117,12 +117,16 @@ process databaseSearch {
 
     output:
     file 'db_results.tsv'
+    file 'db_db_distance.tsv'
+    file 'complete_output_results.tsv'
 
     """
     python $TOOL_FOLDER/database_search.py \
     input_spectra \
     $idbac_database_filtered_json \
     db_results.tsv \
+    complete_output_results.tsv \
+    db_db_distance.tsv \
     --merge_replicates ${params.merge_replicates} \
     --score_threshold ${params.database_search_threshold}
     """

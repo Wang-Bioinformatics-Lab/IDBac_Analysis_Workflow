@@ -53,12 +53,12 @@ Views:
 #         urlparam:
 #             -   attachment:no
 
-# -   name: Dendrogram Similarity
-#     displayname: Dendrogram Similarity
+# -   name: Dendrogram Distance
+#     displayname: Dendrogram Distance
 #     viewname: dendrogramresults
 #     displaytype: datatable
 #     parameters:
-#         filename: nf_output/output_similarity_table.tsv
+#         filename: nf_output/output_distance_table.tsv
 #         error_missingfile: "No File"
 #         columns:
 #             -   title: "View Match"
@@ -67,8 +67,8 @@ Views:
 #                 data: "label_i"
 #             -   title: "label_j"
 #                 data: "label_j"
-#             -   title: "similarity"
-#                 data: "similarity"
+#             -   title: "distance"
+#                 data: "distance"
 #         columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
 #         return `
 #             <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1">View Spectrum 1 - Resolver</a>
@@ -108,8 +108,8 @@ Views:
                 data: "db_culture_collection"
             -   title: "db_taxonomy"
                 data: "db_taxonomy"
-            -   title: "similarity"
-                data: "similarity"
+            -   title: "distance"
+                data: "distance"
         columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
         return `
             <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1">View Query - Resolver </a>

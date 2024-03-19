@@ -6,60 +6,11 @@ import uuid
 import json
 import numpy as np
 
-from massql import msql_fileloading
-from pyteomics import mzxml, mzml
+from utils import load_data, spectrum_binner, compute_distances_binned
+
 from tqdm import tqdm
 import glob
 
-
-def load_data(input_filename):
-    try:
-        ms1_df, ms2_df = msql_fileloading.load_data(input_filename)
-
-        return ms1_df, ms2_df
-    except:
-        print("Error loading data, falling back on default")
-
-    MS_precisions = {
-        1: 5e-6,
-        2: 20e-6,
-        3: 20e-6,
-        4: 20e-6,
-        5: 20e-6,
-        6: 20e-6,
-        7: 20e-6
-    }
-    
-    ms1_df = pd.DataFrame()
-    ms2_df = pd.DataFrame()
-
-    all_mz = []
-    all_i = []
-    all_scan = []
-    
-    # TODO: read the mzML directly
-    with mzml.read(input_filename) as reader:
-        for spectrum in tqdm(reader):
-            try:
-                scan = spectrum["id"].replace("scanId=", "").split("scan=")[-1]
-            except:
-                scan = spectrum["id"]
-
-            mz = spectrum["m/z array"]
-            intensity = spectrum["intensity array"]
-
-            all_mz += list(mz)
-            all_i += list(intensity)
-            all_scan += len(mz) * [scan]
-
-            print(spectrum["id"])
-            
-    if len(all_mz) > 0:
-        ms1_df['i'] = all_i
-        ms1_df['mz'] = all_mz
-        ms1_df['scan'] = all_scan
-
-    return ms1_df, ms2_df
 
 def _load_metadata(input_filename):
     input_df = None
@@ -85,15 +36,15 @@ def main():
     parser.add_argument('output_basic_html_plot')
     parser.add_argument('output_metadata_html_plot')
     parser.add_argument('output_db_html_plot')
-    parser.add_argument('output_similarity_table')
+    parser.add_argument('output_distance_table')
 
     # These are outputs for recreating the histogram
     parser.add_argument('output_histogram_data_directory')
 
     parser.add_argument('--merge_replicates', default="No")
-    parser.add_argument('--similarity', default="cosine")
+    parser.add_argument('--distance', default="cosine")
     parser.add_argument('--metadata_column', default="None")
-    parser.add_argument('--bin_size', default=10.0, type=float)
+    parser.add_argument('--bin_size', default=10.0, type=float, help="Size of the spectra bins for distance calculations.")
 
     args = parser.parse_args()
 
@@ -110,49 +61,13 @@ def main():
 
     for input_filename in all_input_files:
         print("Loading data from {}".format(input_filename))
-        ms1_df, ms2_df = load_data(input_filename)
+        ms1_df, _ = load_data(input_filename)
 
-        bin_size = args.bin_size
-        max_mz = 15000.0
-
-        # Filtering m/z
-        ms1_df = ms1_df[ms1_df['mz'] < max_mz]
-
-        # Bin the MS1 Data by m/z within each spectrum
-        ms1_df['bin'] = (ms1_df['mz'] / bin_size).astype(int)
-
-        # Now we need to group by scan and bin
-        ms1_df = ms1_df.groupby(['scan', 'bin']).agg({'i': 'sum'}).reset_index()
-        ms1_df["mz"] = ms1_df["bin"] * bin_size
-        ms1_df["bin_name"] = "BIN_" + ms1_df["bin"].astype(str)
-        
-        # Turning each scan into a 1d vector that is the intensity value for each bin
-        spectra_binned_df = ms1_df.pivot(index='scan', columns='bin_name', values='i').reset_index()
-        spectra_binned_df["filename"] = os.path.basename(input_filename)
-
-        bins_to_remove = []
-        # merging replicates
-        if args.merge_replicates == "Yes":
-            # Lets do the merge
-            all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
-            for bin in all_bins:
-                all_values = spectra_binned_df[bin]
-
-                # Count non-zero values
-                non_zero_count = len(all_values[all_values > 0])
-
-                # Calculate percent non-zero
-                percent_non_zero = non_zero_count / len(all_values)
-
-                if percent_non_zero < 0.5:
-                    bins_to_remove.append(bin)
-
-            # Removing the bins
-            spectra_binned_df = spectra_binned_df.drop(bins_to_remove, axis=1)
-
-            # Now lets get the mean for each bin
-            spectra_binned_df = spectra_binned_df.groupby("filename").mean().reset_index()
-            spectra_binned_df["scan"] = "merged"
+        spectra_binned_df = spectrum_binner(ms1_df,
+                                            input_filename,
+                                            bin_size=args.bin_size,
+                                            max_mz=15000.0,
+                                            merge_replicates=args.merge_replicates)
 
         all_spectra_df_list.append(spectra_binned_df)
 
@@ -166,27 +81,13 @@ def main():
 
     data_np = all_spectra_df[numerical_columns].to_numpy()
 
-    # Now lets do pairwise cosine similarity
-    from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
-
-    selected_distance_fun = None
-    if args.similarity == "cosine":
-        selected_distance_fun = cosine_distances
-    elif args.similarity == "euclidean":
-        selected_distance_fun = euclidean_distances
-    elif args.similarity == "presence":
-        selected_distance_fun = cosine_distances
-        
-        # Update the data to be 1 or 0
-        data_np[data_np > 0] = 1
-
     # Creating labels
     all_spectra_df["label"] = all_spectra_df["filename"].apply(lambda x: os.path.basename(x)) + ":" + all_spectra_df["scan"].astype(str)
     all_spectra_df["label"] = all_spectra_df["label"].apply(lambda x: x.replace(":merged", ""))
     all_labels_list = all_spectra_df["label"].to_list()
 
     # Calculating the distances between all the spectra
-    similarity_matrix = selected_distance_fun(data_np)
+    distance_matrix = compute_distances_binned(data_np, distance_metric=args.distance)
 
     # Merge in the labels
     output_scores_list = []
@@ -201,15 +102,24 @@ def main():
             output_dict = {}
             output_dict["label_i"] = label_i
             output_dict["label_j"] = label_j
-            output_dict["similarity"] = similarity_matrix[index_i][index_j]
+            output_dict["distance"] = distance_matrix[index_i][index_j]
 
             output_scores_list.append(output_dict)
 
     output_scores_df = pd.DataFrame(output_scores_list)
-    output_scores_df.to_csv(args.output_similarity_table, sep="\t", index=False)
+    output_scores_df.to_csv(args.output_distance_table, sep="\t", index=False)
 
     # Lets make this into a dendrogram
     import plotly.figure_factory as ff
+
+    from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
+    if args.distance == "cosine":
+        selected_distance_fun = cosine_distances
+    elif args.distance == "euclidean":
+        selected_distance_fun = euclidean_distances
+    elif args.distance == "presence":
+        selected_distance_fun = cosine_distances
+        data_np[data_np > 0] = 1
 
     dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun)
     dendro.update_layout(width=800, height=max(15*len(all_labels_list), 350))
@@ -305,8 +215,8 @@ def main():
     try:
         input_database_hits_df = pd.read_csv(args.input_database_hits, sep="\t")
         
-        # sort by similarity
-        input_database_hits_df = input_database_hits_df.sort_values(by="similarity", ascending=False)
+        # sort by distance
+        input_database_hits_df = input_database_hits_df.sort_values(by="distance", ascending=False)
 
         # Picking the best one
         input_database_hits_df = input_database_hits_df.groupby("query_filename").first().reset_index()

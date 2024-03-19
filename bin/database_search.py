@@ -4,12 +4,12 @@ import argparse
 import pandas as pd
 import requests
 import json
-from pyteomics import mzxml, mzml
-from massql import msql_fileloading
 from tqdm import tqdm
 import glob
 from functools import lru_cache
 import numpy as np
+
+from utils import load_data, spectrum_binner, compute_distances_binned
 
 bin_size = 10.0
 
@@ -25,55 +25,6 @@ def _retreive_kb_metadata(database_id):
     spectrum_dict = r.json()
 
     return spectrum_dict
-
-def load_data(input_filename):
-    try:
-        ms1_df, ms2_df = msql_fileloading.load_data(input_filename)
-
-        return ms1_df, ms2_df
-    except:
-        print("Error loading data, falling back on default")
-
-    MS_precisions = {
-        1: 5e-6,
-        2: 20e-6,
-        3: 20e-6,
-        4: 20e-6,
-        5: 20e-6,
-        6: 20e-6,
-        7: 20e-6
-    }
-    
-    ms1_df = pd.DataFrame()
-    ms2_df = pd.DataFrame()
-
-    all_mz = []
-    all_i = []
-    all_scan = []
-    
-    # TODO: read the mzML directly
-    with mzml.read(input_filename) as reader:
-        for spectrum in tqdm(reader):
-            try:
-                scan = spectrum["id"].replace("scanId=", "").split("scan=")[-1]
-            except:
-                scan = spectrum["id"]
-
-            mz = spectrum["m/z array"]
-            intensity = spectrum["intensity array"]
-
-            all_mz += list(mz)
-            all_i += list(intensity)
-            all_scan += len(mz) * [scan]
-
-            print(spectrum["id"])
-            
-    if len(all_mz) > 0:
-        ms1_df['i'] = all_i
-        ms1_df['mz'] = all_mz
-        ms1_df['scan'] = all_scan
-
-    return ms1_df, ms2_df
 
 def load_database(database_filtered_json):
     all_database_spectra = json.load(open(database_filtered_json))
@@ -112,14 +63,76 @@ def load_database(database_filtered_json):
 
     #return merged_spectra_df
 
+def compute_db_db_distance(database_df, db_numerical_columns, output_path, distance_metric="cosine"):
+    """ This function computes the pairwise distance between the the database results in the first 
+    argument, and themselves. This is used to fill out the remainder of the distance matrix.
+    
+    Args:
+    database_df: pd.DataFrame
+        The database results dataframe
+    db_numerical_columns: list
+        The list of numerical columns in the database dataframe
+    output_path: str
+        The path to save the results
+    distance_metric: str (default: "cosine")
+        The distance metric to use for the search
+        
+    Returns:
+    output_results_df: pd.DataFrame
+        The results of the database distance search with the following columns:
+        ["left_index", "right_index", "database_id_left", "database_id_right", "database_scan_left", "database_scan_right", "distance"]
+    """
+    database_data_np = database_df[db_numerical_columns].to_numpy()
+    db_db_distance = compute_distances_binned(database_data_np, distance_metric=distance_metric)
+    
+    output_results_list = []
+    
+    for i, row in enumerate(db_db_distance):
+        for j in range (i+1, len(row)):         # Skip the diagonal, to save some time
+            distance = db_db_distance[i][j]
+            left_index = i
+            right_index = j
+            
+            # Upper diagonal
+            result_dict = {}
+            result_dict["left_index"] = left_index
+            result_dict["right_index"] = right_index
+            result_dict["database_id_left"] = database_df.iloc[left_index]["database_id"]
+            result_dict["database_id_right"] = database_df.iloc[right_index]["database_id"]
+            result_dict["database_scan_left"] = database_df.iloc[left_index]["database_scan"]
+            result_dict["database_scan_right"] = database_df.iloc[right_index]["database_scan"]
+            result_dict["distance"] = distance
+
+            output_results_list.append(result_dict)
+            
+            # Lower diagonal
+            result_dict = {}
+            result_dict["left_index"] = right_index
+            result_dict["right_index"] = left_index
+            result_dict["database_id_left"] = database_df.iloc[right_index]["database_id"]
+            result_dict["database_id_right"] = database_df.iloc[left_index]["database_id"]
+            result_dict["database_scan_left"] = database_df.iloc[right_index]["database_scan"]
+            result_dict["database_scan_right"] = database_df.iloc[left_index]["database_scan"]
+            result_dict["distance"] = distance
+            
+            output_results_list.append(result_dict)
+            
+    output_results_df = pd.DataFrame(output_results_list)
+    output_results_df.to_csv(output_path, sep="\t", index=False)
+    
+    return output_results_df
 
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
     parser.add_argument('database_filtered_json')
     parser.add_argument('output_results_tsv')
+    parser.add_argument('complete_output_results_tsv')
+    parser.add_argument('output_db_db_distance_tsv')
     parser.add_argument('--merge_replicates', default="Yes")
     parser.add_argument('--score_threshold', default=0.7, type=float)
+    parser.add_argument('--distance', default="cosine", help="The distance metric to use for the search", choices=["cosine", "euclidean", "manhattan"])
+    parser.add_argument('--bin_size', default=10.0, type=float, help="Size of the spectra bins for distance calculations.")
     
     args = parser.parse_args()
 
@@ -139,48 +152,12 @@ def main():
     for input_filename in all_input_files:
         # Reading Query
         ms1_df, _ = load_data(input_filename)
-
-        max_mz = 15000.0
-
-        # Filtering m/z
-        ms1_df = ms1_df[ms1_df['mz'] < max_mz]
-
-        # Bin the MS1 Data by m/z within each spectrum
-        ms1_df['bin'] = (ms1_df['mz'] / bin_size).astype(int)
-
-        # Now we need to group by scan and bin
-        ms1_df = ms1_df.groupby(['scan', 'bin']).agg({'i': 'sum'}).reset_index()
-        ms1_df["mz"] = ms1_df["bin"] * bin_size
-        ms1_df["bin_name"] = "BIN_" + ms1_df["bin"].astype(str)
         
-        # Turning each scan into a 1d vector that is the intensity value for each bin
-        spectra_binned_df = ms1_df.pivot(index='scan', columns='bin_name', values='i').reset_index()
-        spectra_binned_df["filename"] = os.path.basename(input_filename)
-
-        bins_to_remove = []
-        # merging replicates
-        if args.merge_replicates == "Yes":
-            # Lets do the merge
-            all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
-            for bin in all_bins:
-                all_values = spectra_binned_df[bin]
-                #print(bin, all_values)
-
-                # Count non-zero values
-                non_zero_count = len(all_values[all_values > 0])
-
-                # Calculate percent non-zero
-                percent_non_zero = non_zero_count / len(all_values)
-
-                if percent_non_zero < 0.5:
-                    bins_to_remove.append(bin)
-
-            # Removing the bins
-            spectra_binned_df = spectra_binned_df.drop(bins_to_remove, axis=1)
-
-            # Now lets get the mean for each bin
-            spectra_binned_df = spectra_binned_df.groupby("filename").mean().reset_index()
-            spectra_binned_df["scan"] = "merged"
+        spectra_binned_df = spectrum_binner(ms1_df,
+                                            input_filename,
+                                            bin_size=bin_size,
+                                            max_mz=15000.0,
+                                            merge_replicates="Yes")
         
         # Formatting Database to fill NAs
         
@@ -188,7 +165,6 @@ def main():
         spectra_binned_db_df = database_df
 
         query_numerical_columns = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
-
         merged_numerical_columns = list(set(query_numerical_columns + db_numerical_columns))
 
         # Fill in the missing values with 0
@@ -213,35 +189,53 @@ def main():
 
         database_data_np = spectra_binned_db_df[merged_numerical_columns].to_numpy()
 
-        # Now lets do pairwise cosine similarity
-        from sklearn.metrics.pairwise import cosine_similarity
-        similarity_matrix = cosine_similarity(query_data_np, database_data_np)
+        # Now lets do pairwise cosine distance
+        distance_matrix = compute_distances_binned(query_data_np, database_data_np, distance_metric=args.distance)
 
-        #print(similarity_matrix)
-        for i, row in enumerate(similarity_matrix):
+        #print(distance_matrix)
+        for i, row in enumerate(distance_matrix):
             for j, item in enumerate(row):
                 query_index = i
                 database_index = j
-                similarity = item
+                distance = item
 
-                if similarity < args.score_threshold:
-                    continue
+                if distance < args.score_threshold:
+                    result_dict = {}
+                    result_dict["query_index"] = query_index
+                    result_dict["database_index"] = database_index
+                    result_dict["distance"] = distance
+                    result_dict["query_filename"] = os.path.basename(input_filename)
 
+                    output_results_list.append(result_dict)
+                    
+        # We will also need a complete distance_matrix for the query-db pairs (in contrast to the above on that's trimmed by the score_threshold)
+        complete_output_results_list = []
+        # Get columns where there is at least one match less than threshold
+        thresholded_indices = np.where(np.any(distance_matrix < args.score_threshold, axis=0))[0]
+        for i, row in enumerate(distance_matrix):
+            for j in thresholded_indices:
+                distance = row[j]
+                query_index = i
+                database_index = j
+                
                 result_dict = {}
                 result_dict["query_index"] = query_index
                 result_dict["database_index"] = database_index
-                result_dict["similarity"] = similarity
+                result_dict["distance"] = distance
                 result_dict["query_filename"] = os.path.basename(input_filename)
-
-                output_results_list.append(result_dict)
+                
+                complete_output_results_list.append(result_dict)
+                
 
     small_database_df = database_df[["row_count", "database_id"]]
     small_database_df["database_scan"] = small_database_df["database_id"]
 
     output_results_df = pd.DataFrame(output_results_list)
+    complete_output_results_df = pd.DataFrame(complete_output_results_list)
     if len(output_results_df) == 0:
         print("No matches found")
         open(args.output_results_tsv, "w").write("\n")
+        open(args.complete_output_results_tsv, "w").write("\n")
 
         exit(0)
     
@@ -249,23 +243,35 @@ def main():
     output_results_df = output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
     output_results_df["database_id"] = output_results_df["database_scan"]
     output_results_df["database_scan"] = output_results_df["row_count"] + 1
+    complete_output_results_df = complete_output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
+    
+    # Sanity Check: We assume these to be unique below
+    if len(database_df.database_id.unique()) != len(database_df.database_id):
+        raise ValueError("Database ID is not unique")
+    
+    # Perform pairwise distance of database result hits to fill out the remainder of the distance matrix.
+    database_results_df = output_results_df[["database_id", "database_scan"]].drop_duplicates()
+
+    # Add numerical columns to the database results, for the distance calculation
+    database_results_df = database_results_df.merge(database_df, left_on="database_id", right_on="database_id", how="left")
+    
+    compute_db_db_distance(database_results_df, db_numerical_columns, args.output_db_db_distance_tsv, distance_metric=args.distance)
                 
     # Enrich the library information by hitting the web api
-    all_database_metadata_json = requests.get("https://idbac-kb.gnps2.org/api/spectra").json()
+    all_database_metadata_json = requests.get("https://idbac.org/api/spectra").json()
     all_database_metadata_df = pd.DataFrame(all_database_metadata_json)
     all_database_metadata_df = all_database_metadata_df[["database_id", "Strain name", "Culture Collection", "Sample name", "Genbank accession"]]
     
     # lets merge the results with the metadata
     output_results_df = output_results_df.merge(all_database_metadata_df, left_on="database_id", right_on="database_id", how="left")
+    complete_output_results_df = complete_output_results_df.merge(all_database_metadata_df, left_on="database_id", right_on="database_id", how="left")
 
     # rename columns
     output_results_df = output_results_df.rename(columns={"Strain name": "db_strain_name", "Culture Collection": "db_culture_collection", "Sample name": "db_sample_name", "Genbank accession": "db_genbank_accession"})
 
     # Output data
     output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
-
-    
-
+    complete_output_results_df.to_csv(args.complete_output_results_tsv, sep="\t", index=False)
 
 
 if __name__ == '__main__':

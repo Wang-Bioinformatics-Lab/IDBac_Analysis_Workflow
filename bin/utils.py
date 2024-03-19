@@ -1,0 +1,141 @@
+import os
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
+from massql import msql_fileloading
+from pyteomics import mzxml, mzml
+
+from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
+
+def load_data(input_filename):
+    """
+    Reads an mzML file and converts it to a pandas dataframe. 
+    
+    Args:
+    input_filename: str, path to the mzML file
+    
+    Returns:
+    ms1_df: pd.DataFrame, MS1 data
+    ms2_df: pd.DataFrame, MS2 data
+    """
+    try:
+        ms1_df, ms2_df = msql_fileloading.load_data(input_filename)
+
+        return ms1_df, ms2_df
+    except:
+        print("Error loading data, falling back on default")
+
+    MS_precisions = {
+        1: 5e-6,
+        2: 20e-6,
+        3: 20e-6,
+        4: 20e-6,
+        5: 20e-6,
+        6: 20e-6,
+        7: 20e-6
+    }
+    
+    ms1_df = pd.DataFrame()
+    ms2_df = pd.DataFrame()
+
+    all_mz = []
+    all_i = []
+    all_scan = []
+    
+    # TODO: read the mzML directly
+    with mzml.read(input_filename) as reader:
+        for spectrum in tqdm(reader):
+            try:
+                scan = spectrum["id"].replace("scanId=", "").split("scan=")[-1]
+            except:
+                scan = spectrum["id"]
+
+            mz = spectrum["m/z array"]
+            intensity = spectrum["intensity array"]
+
+            all_mz += list(mz)
+            all_i += list(intensity)
+            all_scan += len(mz) * [scan]
+
+            print(spectrum["id"])
+            
+    if len(all_mz) > 0:
+        ms1_df['i'] = all_i
+        ms1_df['mz'] = all_mz
+        ms1_df['scan'] = all_scan
+
+    return ms1_df, ms2_df
+
+def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=10.0, max_mz=15000.0, merge_replicates="No"):
+    """
+    Bins MS1 dataframe into a 1d vector that is the intensity value for each bin
+    
+    Args:
+    ms1_df: pd.DataFrame, MS1 data
+    input_filename: str, path to the mzML file
+    bin_size: float, size of the bin
+    max_mz: float, maximum m/z value to consider
+    merge_replicates: str, whether to merge replicates or not
+    
+    Returns:
+    spectra_binned_df: pd.DataFrame, binned MS1 data
+    """
+    # Filtering m/z
+    ms1_df = ms1_df[ms1_df['mz'] < max_mz]
+
+    # Bin the MS1 Data by m/z within each spectrum
+    ms1_df['bin'] = (ms1_df['mz'] / bin_size).astype(int)
+
+    # Now we need to group by scan and bin
+    ms1_df = ms1_df.groupby(['scan', 'bin']).agg({'i': 'sum'}).reset_index()
+    ms1_df["mz"] = ms1_df["bin"] * bin_size
+    ms1_df["bin_name"] = "BIN_" + ms1_df["bin"].astype(str)
+    
+    # Turning each scan into a 1d vector that is the intensity value for each bin
+    spectra_binned_df = ms1_df.pivot(index='scan', columns='bin_name', values='i').reset_index()
+    spectra_binned_df["filename"] = os.path.basename(input_filename)
+
+    bins_to_remove = []
+    # merging replicates
+    if merge_replicates == "Yes":
+        # Lets do the merge
+        all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
+        for bin in all_bins:
+            all_values = spectra_binned_df[bin]
+
+            # Count non-zero values
+            non_zero_count = len(all_values[all_values > 0])
+
+            # Calculate percent non-zero
+            percent_non_zero = non_zero_count / len(all_values)
+
+            if percent_non_zero < 0.5:
+                bins_to_remove.append(bin)
+
+        # Removing the bins
+        spectra_binned_df = spectra_binned_df.drop(bins_to_remove, axis=1)
+
+        # Now lets get the mean for each bin
+        spectra_binned_df = spectra_binned_df.groupby("filename").mean().reset_index()
+        spectra_binned_df["scan"] = "merged"
+    
+    return spectra_binned_df
+
+def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, distance_metric:str='cosine'):
+    
+    if distance_metric not in ['cosine', 'euclidean', 'presence']:
+        raise ValueError(f'Invalid distance metric. Expected "cosine", "euclidean", or "presence", but got {distance_metric}')
+    
+    if distance_metric == "cosine":
+        selected_distance_fun = cosine_distances
+    elif distance_metric == "euclidean":
+        selected_distance_fun = euclidean_distances
+    elif distance_metric == "presence":
+        selected_distance_fun = cosine_distances
+        np_data_X[np_data_X > 0] = 1
+        if np_data_Y is not None:
+            np_data_Y[np_data_Y > 0] = 1
+            
+        
+    return selected_distance_fun(np_data_X, np_data_Y)
