@@ -17,7 +17,7 @@ def load_data(input_filename):
 
         return ms1_df, ms2_df
     except:
-        print("Error loading data, falling back on default")
+        print(f"Error loading data for {input_filename}, falling back on default")
 
     MS_precisions = {
         1: 5e-6,
@@ -120,7 +120,7 @@ def main():
             spectra_binned_df = spectra_binned_df.drop(bins_to_remove, axis=1)
 
             # Now lets get the mean for each bin
-            spectra_binned_df = spectra_binned_df.groupby("filename").mean().reset_index()
+            spectra_binned_df = spectra_binned_df.drop("scan", axis=1).groupby("filename").mean().reset_index()
             spectra_binned_df["scan"] = "merged"
 
         # Writing an mzML file with the merged spectra
