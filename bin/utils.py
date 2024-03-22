@@ -117,7 +117,7 @@ def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=10.0, max_
         spectra_binned_df = spectra_binned_df.drop(bins_to_remove, axis=1)
 
         # Now lets get the mean for each bin
-        spectra_binned_df = spectra_binned_df.groupby("filename").mean().reset_index()
+        spectra_binned_df = spectra_binned_df.drop("scan", axis=1).groupby("filename").mean().reset_index()
         spectra_binned_df["scan"] = "merged"
     
     return spectra_binned_df
