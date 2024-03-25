@@ -236,14 +236,17 @@ def main():
     small_database_df = database_df[["row_count", "database_id"]]
     small_database_df["database_scan"] = small_database_df["database_id"]
 
-    output_results_df = pd.DataFrame(output_results_list)
-    complete_output_results_df = pd.DataFrame(complete_output_results_list)
+    output_results_df = pd.DataFrame(output_results_list, columns=["query_index", "database_index", "distance", "query_filename"])
+    complete_output_results_df = pd.DataFrame(complete_output_results_list, columns=["query_index", "database_index", "distance", "query_filename"])
     if len(output_results_df) == 0:
         print("No matches found")
-        open(args.output_results_tsv, "w").write("\n")
-        open(args.complete_output_results_tsv, "w").write("\n")
-        open(args.output_db_db_distance_tsv, "w").write("\n")
-
+        # Write headers only
+        with open(args.output_results_tsv, "w") as f:
+            f.write("query_index\tdatabase_index\tdistance\tquery_filename\n")
+        with open(args.complete_output_results_tsv, "w") as f:
+            f.write("query_index\tdatabase_index\tdistance\tquery_filename\n")
+        with open(args.output_db_db_distance_tsv, "w") as f:
+            f.write("left_index\tright_index\tdatabase_id_left\tdatabase_id_right\tdatabase_scan_left\tdatabase_scan_right\tdistance\n")
         exit(0)
     
     # Here we want to take the results from the search
