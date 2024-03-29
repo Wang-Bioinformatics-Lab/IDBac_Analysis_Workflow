@@ -10,12 +10,22 @@ parameterlist:
     - displayname: File Selection
       paramtype: section
 
-    - displayname: Input Data Folder
+    - displayname: Input Isolate Folder
       paramtype: fileselector
       nf_paramname: input_spectra_folder
       formplaceholder: Enter the path to data
       formvalue: ""
       targettaskfolder: input_spectra
+      optional: false
+      selectsinglefile: false
+      folderunroll: true
+
+    - displayname: Input Small Molecule Folder
+      paramtype: fileselector
+      nf_paramname: input_small_molecule_folder
+      formplaceholder: Enter the path to data
+      formvalue: ""
+      targettaskfolder: input_small_molecule_folder
       optional: false
       selectsinglefile: false
       folderunroll: true
