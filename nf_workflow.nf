@@ -2,12 +2,14 @@
 nextflow.enable.dsl=2
 
 params.input_spectra_folder = ""
+params.input_small_molecule_folder = ""
 params.input_metadata_file = ""
 
 params.merge_replicates = "No"
 params.distance = "presence"
 params.database_search_threshold = "0.7"
-
+params.database_search_mass_range_lower = "2000"
+params.database_search_mass_range_upper = "20000"
 params.metadata_column = "None"
 
 TOOL_FOLDER = "$baseDir/bin"
@@ -32,6 +34,7 @@ process baselineCorrection {
     """
 }
 
+// Optionally merges all spectra within the same file
 process mergeInputSpectra {
     publishDir "./nf_output", mode: 'copy'
 
@@ -48,8 +51,51 @@ process mergeInputSpectra {
     python $TOOL_FOLDER/merge_spectra.py \
     input_spectra \
     merged \
-    --merge_replicates ${params.merge_replicates}
+    --merge_replicates ${params.merge_replicates} \
+    --mass_range_lower ${params.database_search_mass_range_lower} \
+    --mass_range_upper ${params.database_search_mass_range_upper}
     """
+}
+
+process baselineCorrectionSmallMolecule {
+    publishDir "./nf_output/small_molecule/baseline_corrected", mode: 'copy'
+
+    conda "$TOOL_FOLDER/conda_maldiquant.yml"
+
+    errorStrategy 'ignore'
+
+    input:
+    file input_file 
+
+    output:
+    file 'baselinecorrected/*.mzML'
+
+    """
+    mkdir baselinecorrected
+    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file baselinecorrected/${input_file}
+    """
+
+}
+
+process summarizeSmallMolecule {
+    publishDir "./nf_output/small_molecule/", mode: 'copy'
+
+    cache false
+
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    input:
+    file "input_spectra/*"
+
+    output:
+    file 'summary.json'
+
+    """
+    python $TOOL_FOLDER/summarize_small_molecule.py \
+    --input_folder "input_spectra" \
+    --output_file "summary.json"
+    """
+
 }
 
 process createDendrogram {
@@ -85,7 +131,9 @@ process createDendrogram {
     output_histogram_data_directory \
     --merge_replicates ${params.merge_replicates} \
     --distance ${params.distance} \
-    --metadata_column "${params.metadata_column}"
+    --metadata_column "${params.metadata_column}" \
+    --mass_range_lower ${params.database_search_mass_range_lower} \
+    --mass_range_upper ${params.database_search_mass_range_upper}
     """
 }
 
@@ -128,7 +176,9 @@ process databaseSearch {
     complete_output_results.tsv \
     db_db_distance.tsv \
     --merge_replicates ${params.merge_replicates} \
-    --score_threshold ${params.database_search_threshold}
+    --score_threshold ${params.database_search_threshold} \
+    --mass_range_lower ${params.database_search_mass_range_lower} \
+    --mass_range_upper ${params.database_search_mass_range_upper}
     """
 }
 
@@ -169,6 +219,13 @@ process summarizeSpectra{
 }
 
 workflow {
+
+    // Summarizing small molecules
+    if (params.input_small_molecule_folder != "") {
+        baseline_corrected_small_molecule = baselineCorrectionSmallMolecule(Channel.fromPath(params.input_small_molecule_folder + "/*.mzML"))
+        summarizeSmallMolecule(baseline_corrected_small_molecule.collect())
+    }
+
     // Doing baseline correction
     input_mzml_files_ch = Channel.fromPath(params.input_spectra_folder + "/*.mzML")
     baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)

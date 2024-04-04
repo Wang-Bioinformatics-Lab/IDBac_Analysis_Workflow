@@ -45,6 +45,8 @@ def main():
     parser.add_argument('--distance', default="cosine")
     parser.add_argument('--metadata_column', default="None")
     parser.add_argument('--bin_size', default=10.0, type=float, help="Size of the spectra bins for distance calculations.")
+    parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value to consider for binning.")
+    parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value to consider for binning.")
 
     args = parser.parse_args()
 
@@ -66,7 +68,8 @@ def main():
         spectra_binned_df = spectrum_binner(ms1_df,
                                             input_filename,
                                             bin_size=args.bin_size,
-                                            max_mz=15000.0,
+                                            min_mz=args.mass_range_lower,
+                                            max_mz=args.mass_range_upper,
                                             merge_replicates=args.merge_replicates)
 
         all_spectra_df_list.append(spectra_binned_df)

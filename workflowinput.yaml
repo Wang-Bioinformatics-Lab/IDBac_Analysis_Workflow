@@ -10,12 +10,22 @@ parameterlist:
     - displayname: File Selection
       paramtype: section
 
-    - displayname: Input Data Folder
+    - displayname: Input Protein Folder
       paramtype: fileselector
       nf_paramname: input_spectra_folder
       formplaceholder: Enter the path to data
       formvalue: ""
       targettaskfolder: input_spectra
+      optional: false
+      selectsinglefile: false
+      folderunroll: true
+
+    - displayname: Input Small Molecule Folder
+      paramtype: fileselector
+      nf_paramname: input_small_molecule_folder
+      formplaceholder: Enter the path to data
+      formvalue: ""
+      targettaskfolder: input_small_molecule_folder
       optional: false
       selectsinglefile: false
       folderunroll: true
@@ -55,12 +65,26 @@ parameterlist:
         - value: "euclidean"
           display: "euclidean"
 
-    - displayname: Database Search Threshold
+    - displayname: Protein Database Search Mass Range Lower Bound
+      paramtype: text
+      nf_paramname: database_search_mass_range_lower
+      formplaceholder: Enter the Database Search Mass Range
+      formvalue: "2000"
+      tooltip: "The lower bound of m/z values when comparing protein spectra to the database."
+
+    - displayname: Protein Database Search Mass Range Upper Bound
+      paramtype: text
+      nf_paramname: database_search_mass_range_upper
+      formplaceholder: Enter the Database Search Mass Range
+      formvalue: "20000"
+      tooltip: "The upper bound of m/z values when comparing protein spectra to the database."
+
+    - displayname: Protein Database Search Distance Threshold
       paramtype: text
       nf_paramname: database_search_threshold
-      formplaceholder: Enter the Database Search Threshold
+      formplaceholder: Enter the Database Search Distance Threshold
       formvalue: "0.3"
-      tooltip: "database_search_threshold"
+      tooltip: "The maximumum distance threshold for a protein to be considered a match to the database."
 
     - displayname: Metadata Column to Display
       paramtype: text
