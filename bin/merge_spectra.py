@@ -67,6 +67,8 @@ def main():
     parser.add_argument('output_folder')
     parser.add_argument('--merge_replicates', default="No")
     parser.add_argument('--bin_size', default=10.0, type=float)
+    parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value.")
+    parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value.")
 
     args = parser.parse_args()
 
@@ -82,10 +84,9 @@ def main():
         print("Loading data from {}".format(input_filename))
         ms1_df, ms2_df = load_data(input_filename)
 
-        max_mz = 15000.0
-
         # Filtering m/z
-        ms1_df = ms1_df[ms1_df['mz'] < max_mz]
+        ms1_df = ms1_df.loc[ms1_df['mz'] > args.mass_range_lower]
+        ms1_df = ms1_df.loc[ms1_df['mz'] < args.mass_range_upper]
 
         # Bin the MS1 Data by m/z within each spectrum
         ms1_df['bin'] = (ms1_df['mz'] / bin_size).astype(int)

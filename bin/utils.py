@@ -67,7 +67,7 @@ def load_data(input_filename):
 
     return ms1_df, ms2_df
 
-def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=10.0, max_mz=15000.0, merge_replicates="No"):
+def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=10.0, min_mz=2000.0, max_mz=20000.0, merge_replicates="No"):
     """
     Bins MS1 dataframe into a 1d vector that is the intensity value for each bin
     
@@ -75,6 +75,7 @@ def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=10.0, max_
     ms1_df: pd.DataFrame, MS1 data
     input_filename: str, path to the mzML file
     bin_size: float, size of the bin
+    min_mz: float, minimum m/z value to consider
     max_mz: float, maximum m/z value to consider
     merge_replicates: str, whether to merge replicates or not
     
@@ -82,10 +83,11 @@ def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=10.0, max_
     spectra_binned_df: pd.DataFrame, binned MS1 data
     """
     # Filtering m/z
-    ms1_df = ms1_df[ms1_df['mz'] < max_mz]
+    ms1_df = ms1_df.loc[ms1_df['mz'] > min_mz]
+    ms1_df = ms1_df.loc[ms1_df['mz'] < max_mz]
 
     # Bin the MS1 Data by m/z within each spectrum
-    ms1_df['bin'] = (ms1_df['mz'] / bin_size).astype(int)
+    ms1_df['bin'] = (ms1_df['mz'] / bin_size).astype(int)   # Since we have a min_mz, the bins won't start at zero, but this isn't an issue
 
     # Now we need to group by scan and bin
     ms1_df = ms1_df.groupby(['scan', 'bin']).agg({'i': 'sum'}).reset_index()

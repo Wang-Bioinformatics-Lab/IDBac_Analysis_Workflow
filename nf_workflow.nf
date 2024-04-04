@@ -8,7 +8,8 @@ params.input_metadata_file = ""
 params.merge_replicates = "No"
 params.distance = "presence"
 params.database_search_threshold = "0.7"
-
+params.database_search_mass_range_lower = "2000"
+params.database_search_mass_range_upper = "20000"
 params.metadata_column = "None"
 
 TOOL_FOLDER = "$baseDir/bin"
@@ -50,7 +51,9 @@ process mergeInputSpectra {
     python $TOOL_FOLDER/merge_spectra.py \
     input_spectra \
     merged \
-    --merge_replicates ${params.merge_replicates}
+    --merge_replicates ${params.merge_replicates} \
+    --mass_range_lower ${params.database_search_mass_range_lower} \
+    --mass_range_upper ${params.database_search_mass_range_upper}
     """
 }
 
@@ -128,7 +131,9 @@ process createDendrogram {
     output_histogram_data_directory \
     --merge_replicates ${params.merge_replicates} \
     --distance ${params.distance} \
-    --metadata_column "${params.metadata_column}"
+    --metadata_column "${params.metadata_column}" \
+    --mass_range_lower ${params.database_search_mass_range_lower} \
+    --mass_range_upper ${params.database_search_mass_range_upper}
     """
 }
 
@@ -171,7 +176,9 @@ process databaseSearch {
     complete_output_results.tsv \
     db_db_distance.tsv \
     --merge_replicates ${params.merge_replicates} \
-    --score_threshold ${params.database_search_threshold}
+    --score_threshold ${params.database_search_threshold} \
+    --mass_range_lower ${params.database_search_mass_range_lower} \
+    --mass_range_upper ${params.database_search_mass_range_upper}
     """
 }
 
