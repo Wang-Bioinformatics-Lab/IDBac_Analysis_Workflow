@@ -6,6 +6,19 @@ process_mzML_file <- function(input_file, output_file) {
   # Read the mzML file
   spectra <- importMzMl(input_file)
 
+  # Check if any intensities are greater than zero
+  any_nonzero_intensity <- any(sapply(spectra, function(x) any(x@intensity > 0)))
+
+  if (!any_nonzero_intensity) {
+    # Print warning message
+    cat("Warning: All intensities in the spectra are zero. Skipping baseline correction and peak detection.\n")
+
+    # Copy the input file to the output file (to avoid errors in the next step)
+    file.copy(input_file, output_file)
+    
+    return()
+  }
+
   # Perform baseline subtraction using the SNIP algorithm
   spectra_baseline_corrected <- removeBaseline(spectra, method="SNIP", iterations=100)
 
