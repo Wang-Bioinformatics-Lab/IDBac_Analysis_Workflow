@@ -38,15 +38,15 @@ def summarize_scans(input_folder, output_file):
                     # Discretize the m/z values to two decimal places, adding the intensities
                     mz_intensity = {}
                     for m, i in zip(mz, intensity):
-                        mz_rounded = round(m, 2)
+                        mz_rounded = str(round(m, 2))
                         if mz_rounded in mz_intensity:
                             mz_intensity[mz_rounded] += i
                         else:
                             mz_intensity[mz_rounded] = i
                             
-                    output_dict['m/z array'] = sorted(mz_intensity.keys())
+                    output_dict['m/z array'] = [str(x) for x in sorted(mz_intensity.keys())]
                     max_intensity = max(mz_intensity.values())
-                    output_dict['intensity array'] = [round(mz_intensity[m]/max_intensity,4) for m in output_dict['m/z array']]  # Normalize intensities
+                    output_dict['intensity array'] = [str(round(mz_intensity[m]/max_intensity,4)) for m in output_dict['m/z array']]  # Normalize intensities
                     
                     output.append(output_dict)
                 

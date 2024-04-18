@@ -30,7 +30,18 @@ parameterlist:
       selectsinglefile: false
       folderunroll: true
 
-    - displayname: Input Metadata File
+    - displayname: Input Small Molecule Media Control Folder (Optional)
+      paramtype: fileselector
+      nf_paramname: input_media_control_folder
+      formplaceholder: Enter the path to data
+      formvalue: ""
+      targettaskfolder: input_media_control
+      optional: true
+      selectsinglefile: false
+      folderunroll: true
+      tooltip: "Upload a folder containing media control files for small molecule data. File names must match those in the metadata file."
+
+    - displayname: Input Metadata File (Optional)
       paramtype: fileselector
       nf_paramname: input_metadata_file
       formplaceholder: Enter the path to data

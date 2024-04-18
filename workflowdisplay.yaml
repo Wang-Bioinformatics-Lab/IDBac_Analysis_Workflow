@@ -35,6 +35,19 @@ Views:
             <a target="_blank" href="/dashboards/embedded/resolver/?usi=mzspec:GNPS2:TASK-${task}-nf_output/merged/${encodeURIComponent(row["filename"])}:scan:${encodeURIComponent(row["scan"])}">View in GNPS2</a>
         `;}}]'
 
+-   name: Errors
+    displayname: Input File Error Summary
+    viewname: errors
+    displaytype: datatable
+    parameters:
+        filename: nf_output/errors.csv
+        error_missingfile: "No Errors Found"
+        columns:
+            -   title: "Filename"
+                data: Filename
+            -   title: "Error"
+                data: Error
+
 # -   name: Visualize Dendrogram
 #     displayname: Visualize Dendrogram
 #     viewname: visualize
