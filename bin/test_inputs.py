@@ -24,7 +24,7 @@ def validate_file(input_file:str, output_file:str)->int:
                     output_writer.writerow({'original_filename': input_file, 'error': f"Scan {scan['id']} has empty intensity array"})
                     output_status = 1
                 if max(scan['intensity array']) == 0:
-                    output_writer.writerow({'original_filename': input_file, 'error': f"Scan {scan['id']} has all zero intensity array"})
+                    output_writer.writerow({'original_filename': input_file, 'error': f"Scan {scan['id']} contains no peaks"})
                     output_status = 1
             
     return output_status
