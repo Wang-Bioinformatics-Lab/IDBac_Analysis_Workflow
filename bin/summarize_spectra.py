@@ -56,6 +56,8 @@ def load_data(input_filename):
         ms1_df['i'] = all_i
         ms1_df['mz'] = all_mz
         ms1_df['scan'] = all_scan
+    else:
+        raise ValueError(f"No data found in {input_filename}")
 
     return ms1_df, ms2_df
 
