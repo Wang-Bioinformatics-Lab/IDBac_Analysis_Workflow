@@ -13,8 +13,11 @@ import glob
 def load_data(input_filename):
     try:
         ms1_df, ms2_df = msql_fileloading.load_data(input_filename)
+        
+        # Fallback if the loading failed but an error was not thrown
+        if len(ms1_df) > 0:
+            return ms1_df, ms2_df
 
-        return ms1_df, ms2_df
     except:
         print("Error loading data, falling back on default")
 
@@ -56,6 +59,10 @@ def load_data(input_filename):
         ms1_df['i'] = all_i
         ms1_df['mz'] = all_mz
         ms1_df['scan'] = all_scan
+    else:
+        ms1_df['i'] = []
+        ms1_df['mz'] = []
+        ms1_df['scan'] = []
 
     return ms1_df, ms2_df
 
@@ -73,7 +80,12 @@ def main():
     for input_file in all_input_files:
         ms1_df, _ = load_data(input_file)
 
-        all_scans = ms1_df["scan"].unique()
+        try:
+            all_scans = ms1_df["scan"].unique()
+        except Exception as e:
+            print(f"Error reading {input_file}")
+            print(ms1_df, flush=True)
+            raise e
 
         for scan in all_scans:
             scan_dict = {}

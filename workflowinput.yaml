@@ -94,7 +94,7 @@ parameterlist:
       paramtype: text
       nf_paramname: database_search_threshold
       formplaceholder: Enter the Database Search Distance Threshold
-      formvalue: "0.3"
+      formvalue: "0.5"
       tooltip: "The maximumum distance threshold for a protein to be considered a match to the database."
 
     - displayname: Metadata Column to Display

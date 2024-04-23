@@ -1,10 +1,20 @@
 import argparse
+import os
 import sys
 from pyteomics import mzml
 import csv
 
 def validate_file(input_file:str, output_file:str)->int:
     """This function will validate the input file for common errors and output them to a csv file if errors are found."""
+    
+    # Check that the file is not empty
+    if os.path.getsize(input_file) == 0:
+        with open(output_file, 'w', encoding='utf-8') as output_csv:
+            headers = ['original_filename', 'error']
+            output_writer = csv.DictWriter(output_csv, fieldnames=headers)
+            output_writer.writerow({'original_filename': input_file, 'error': 'File is empty. If the file was uploaded, please check the uploaded file to ensure it was successful.'})
+        return 1
+    
     output_status = 0
     with mzml.MzML(input_file) as reader:
         with open(output_file, 'w', encoding='utf-8') as output_csv:
