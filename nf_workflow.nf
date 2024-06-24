@@ -147,7 +147,7 @@ process small_molecule_media_control {
 
     input:
     each small_molecule_file
-    file `file
+    file metadata_file
     path media_control_dir, stageAs: "media_control_dir/*"
 
     output:
