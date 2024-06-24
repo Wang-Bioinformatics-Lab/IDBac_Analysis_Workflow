@@ -34,6 +34,18 @@ process preFlightCheck {
     """
 }
 
+// Does some basic sanity checks on the metadata file
+process metadataValidation {
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    input:
+    file metadata_file
+
+    """
+    python3 $TOOL_FOLDER/metadata_validation.py --metadata_table $metadata_file
+    """
+}
+
 // This process outputs all of the errors from preFlightCheck to nf_output
 process outputErrors {
     publishDir "./nf_output", mode: 'copy'
@@ -301,6 +313,10 @@ workflow {
     if (params.input_media_control_folder != "") {
         blank_channel = Channel.fromPath(params.input_media_control_folder + "/*.mzML")
         pre_flight_ch = pre_flight_ch.concat(blank_channel)
+    }
+    if (params.input_metadata_file != "") {
+        metadata_file_ch = Channel.fromPath(params.input_metadata_file)
+        metadataValidation(metadata_file_ch)
     }
 
     preFlightFailures = preFlightCheck(pre_flight_ch)
