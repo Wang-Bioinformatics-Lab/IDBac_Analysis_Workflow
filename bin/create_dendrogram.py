@@ -89,27 +89,28 @@ def main():
     all_spectra_df["label"] = all_spectra_df["label"].apply(lambda x: x.replace(":merged", ""))
     all_labels_list = all_spectra_df["label"].to_list()
 
-    # Calculating the distances between all the spectra
-    distance_matrix = compute_distances_binned(data_np, distance_metric=args.distance)
-
-    # Merge in the labels
     output_scores_list = []
-    for index_i, label_i in enumerate(all_labels_list):
-        for index_j, label_j in enumerate(all_labels_list):
-            if index_i == index_j:
-                continue
+    if len(data_np) > 1:
+        # Calculating the distances between all the spectra
+        distance_matrix = compute_distances_binned(data_np, distance_metric=args.distance)
 
-            if index_i > index_j:
-                continue
-            
-            output_dict = {}
-            output_dict["label_i"] = label_i
-            output_dict["label_j"] = label_j
-            output_dict["distance"] = distance_matrix[index_i][index_j]
+        # Merge in the labels
+        for index_i, label_i in enumerate(all_labels_list):
+            for index_j, label_j in enumerate(all_labels_list):
+                if index_i == index_j:
+                    continue
 
-            output_scores_list.append(output_dict)
+                if index_i > index_j:
+                    continue
+                
+                output_dict = {}
+                output_dict["label_i"] = label_i
+                output_dict["label_j"] = label_j
+                output_dict["distance"] = distance_matrix[index_i][index_j]
 
-    output_scores_df = pd.DataFrame(output_scores_list)
+                output_scores_list.append(output_dict)
+
+    output_scores_df = pd.DataFrame(output_scores_list, columns=['label_i', 'label_j', 'distance'])
     output_scores_df.to_csv(args.output_distance_table, sep="\t", index=False)
 
     # Lets make this into a dendrogram
@@ -124,7 +125,7 @@ def main():
         selected_distance_fun = cosine_distances
         data_np[data_np > 0] = 1
 
-    if data_np.shape[0] >= 1:
+    if data_np.shape[0] > 1:
         # Otherwise, there's no distances to compute
         dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun)
         dendro.update_layout(width=800, height=max(15*len(all_labels_list), 350))
