@@ -41,9 +41,6 @@ process metadataValidation {
     input:
     file metadata_file
 
-    output:
-    path 'errors.csv'
-
     """
     python3 $TOOL_FOLDER/metadata_validation.py --metadata_table $metadata_file
     """
