@@ -58,7 +58,7 @@ process outputErrors {
 
     """
     cat $input_files > errors.csv
-    sed -i 1i"Filename,Error" errors.csv   # Add headers (since we are concatenating multiple files)
+    sed -i 1i"Error_Level,Scan,Filename,Error" errors.csv   # Add headers (since we are concatenating multiple files)
     """
 }
 

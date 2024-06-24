@@ -43,8 +43,12 @@ Views:
         filename: nf_output/errors.csv
         error_missingfile: "No Errors Found"
         columns:
+            -   title: "Error Level"
+                data: Error_Level
             -   title: "Filename"
                 data: Filename
+            -   title: "Scan"
+                data: Scan
             -   title: "Error"
                 data: Error
 
