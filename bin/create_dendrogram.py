@@ -124,9 +124,11 @@ def main():
         selected_distance_fun = cosine_distances
         data_np[data_np > 0] = 1
 
-    dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun)
-    dendro.update_layout(width=800, height=max(15*len(all_labels_list), 350))
-    dendro.write_html(args.output_basic_html_plot)
+    if data_np.shape[0] >= 1:
+        # Otherwise, there's no distances to compute
+        dendro = ff.create_dendrogram(data_np, orientation='left', labels=all_labels_list, distfun=selected_distance_fun)
+        dendro.update_layout(width=800, height=max(15*len(all_labels_list), 350))
+        dendro.write_html(args.output_basic_html_plot)
 
     # Saving the output data to create the dendrograms
     output_numerical_spectra_filename = os.path.join(args.output_histogram_data_directory, "numerical_spectra.npy")
