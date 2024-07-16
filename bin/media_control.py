@@ -106,8 +106,14 @@ def main():
         metadata_df = pd.read_csv(args.metadata_file)
     elif args.metadata_file.endswith('.xlsx'):
         metadata_df = pd.read_excel(args.metadata_file)
+        # If it contains multiple tables, get the one named "Metadata sheet"
+        if isinstance(metadata_df, dict):
+            metadata_df = metadata_df['Metadata sheet']
     elif args.metadata_file.endswith('.xls'):
         metadata_df = pd.read_excel(args.metadata_file)
+        # If it contains multiple tables, get the one named "Metadata sheet"
+        if isinstance(metadata_df, dict):
+            metadata_df = metadata_df['Metadata sheet']
     elif args.metadata_file.endswith('.tsv'):
         metadata_df = pd.read_csv(args.metadata_file, sep='\t')
     else:
@@ -122,7 +128,7 @@ def main():
     except IndexError:
         print(metadata_df)
         print(metadata_df[metadata_df['Small molecule file name'] == os.path.basename(args.small_molecule_file)])
-        raise ValueError(f"Could not find media control file for '{os.path.basename(args.small_molecule_file)}'")
+        raise ValueError(f"Could not find media control file for '{os.path.basename(args.small_molecule_file)}'.")
        
     media_control(mzml_file=args.small_molecule_file, media_control_file=os.path.join(args.media_control_dir,media_control_file), output_file=args.output_file)
 
