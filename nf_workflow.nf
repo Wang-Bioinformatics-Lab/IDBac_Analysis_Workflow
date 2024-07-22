@@ -13,6 +13,8 @@ params.database_search_mass_range_lower = "2000"
 params.database_search_mass_range_upper = "20000"
 params.metadata_column = "None"
 
+params.heatmap_bin_size = 1.0
+
 TOOL_FOLDER = "$baseDir/bin"
 
 /* Simple sanity checks on mzML files that we can warn the users about
@@ -58,7 +60,7 @@ process outputErrors {
 
     """
     cat $input_files > errors.csv
-    sed -i 1i"Filename,Error" errors.csv   # Add headers (since we are concatenating multiple files)
+    sed -i 1i"Error_Level,Scan,Filename,Error" errors.csv   # Add headers (since we are concatenating multiple files)
     """
 }
 
@@ -82,6 +84,7 @@ process baselineCorrection {
 }
 
 // Optionally merges all spectra within the same file
+// Note: This is only used for plotting, the outputs are not used for database search
 process mergeInputSpectra {
     publishDir "./nf_output", mode: 'copy'
 
@@ -92,6 +95,7 @@ process mergeInputSpectra {
 
     output:
     file 'merged/*.mzML'
+    file 'merge_parameters.txt'
 
     """
     mkdir merged
@@ -100,7 +104,14 @@ process mergeInputSpectra {
     merged \
     --merge_replicates ${params.merge_replicates} \
     --mass_range_lower ${params.database_search_mass_range_lower} \
-    --mass_range_upper ${params.database_search_mass_range_upper}
+    --mass_range_upper ${params.database_search_mass_range_upper} \
+    --bin_size ${params.heatmap_bin_size}
+
+    # Dump merge parameters to a file
+    echo "merge_replicates: ${params.merge_replicates}" > merge_parameters.txt
+    echo "mass_range_lower: ${params.database_search_mass_range_lower}" >> merge_parameters.txt
+    echo "mass_range_upper: ${params.database_search_mass_range_upper}" >> merge_parameters.txt
+    echo "bin_size: ${params.heatmap_bin_size}" >> merge_parameters.txt
     """
 }
 
@@ -119,7 +130,7 @@ process baselineCorrectionSmallMolecule {
 
     """
     mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file baselinecorrected/${input_file}
+    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file "baselinecorrected/${input_file}"
     """
 }
 
@@ -302,7 +313,7 @@ process summarizeSpectra{
 }
 
 workflow {
-    input_mzml_files_ch = Channel.fromPath(params.input_spectra_folder + "/*.mzML")
+    input_mzml_files_ch = Channel.fromPath(params.input_spectra_folder + "/*.mzML", checkIfExists: true) // If we have no input files error out early
 
     // Pre-flight check
     pre_flight_ch = input_mzml_files_ch
@@ -340,7 +351,7 @@ workflow {
     baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
 
     // Doing merging of spectra
-    merged_spectra_ch = mergeInputSpectra(baseline_query_spectra_ch.collect())
+    (merged_spectra_ch, merge_params) = mergeInputSpectra(baseline_query_spectra_ch.collect())
 
     // Summarizing Input
     summarizeSpectra(merged_spectra_ch.collect())

@@ -1,8 +1,15 @@
 import argparse
 import os
 import sys
+import numpy as np
 from pyteomics import mzml
 import csv
+import re
+
+
+def find_integer_at_end(string):
+    return int(re.search(r'\d+$', string).group()) if re.search(r'\d+$', string) else 'N/A'
+
 
 def validate_file(input_file:str, output_file:str)->int:
     """This function will validate the input file for common errors and output them to a csv file if errors are found."""
@@ -10,15 +17,18 @@ def validate_file(input_file:str, output_file:str)->int:
     # Check that the file is not empty
     if os.path.getsize(input_file) == 0:
         with open(output_file, 'w', encoding='utf-8') as output_csv:
-            headers = ['original_filename', 'error']
+            headers = ['error_level', 'scan', 'original_filename', 'error']
             output_writer = csv.DictWriter(output_csv, fieldnames=headers)
-            output_writer.writerow({'original_filename': input_file, 'error': 'File is empty. If the file was uploaded, please check the uploaded file to ensure it was successful.'})
+            output_writer.writerow({'error_level': 'critical', 
+                                    'scan': 'N/A',
+                                    'original_filename': input_file, 
+                                    'error': 'File is empty. If the file was uploaded, please check the uploaded file to ensure it was successful.'})
         return 1
     
     output_status = 0
     with mzml.MzML(input_file) as reader:
         with open(output_file, 'w', encoding='utf-8') as output_csv:
-            headers = ['original_filename', 'error']
+            headers = ['error_level', 'scan', 'original_filename', 'error']
             output_writer = csv.DictWriter(output_csv, fieldnames=headers)           
             
             # Check to make sure scans are readable
@@ -26,16 +36,35 @@ def validate_file(input_file:str, output_file:str)->int:
                 output_writer.writerow({'original_filename': input_file, 'error': 'No scans found'})
                 output_status = 1
             # Check to make sure scans have nonzero intensity arrays
-            for scan in reader:
+            scan_status = np.zeros(len(reader), dtype=bool)
+            for scan_idx, scan in enumerate(reader):
                 if 'intensity array' not in scan:
-                    output_writer.writerow({'original_filename': input_file, 'error': f"Scan {scan['id']} is missing intensity array"})
+                    output_writer.writerow({'error_level': 'warning',
+                                            'scan': find_integer_at_end(scan['id']),
+                                            'original_filename': input_file,
+                                            'error': f"Scan {scan['id']} is missing intensity array"})
                     output_status = 1
+                    scan_status[scan_idx] = True
                 if len(scan['intensity array']) == 0:
-                    output_writer.writerow({'original_filename': input_file, 'error': f"Scan {scan['id']} has empty intensity array"})
+                    output_writer.writerow({'error_level': 'warning',
+                                            'scan': find_integer_at_end(scan['id']),
+                                            'original_filename': input_file,
+                                            'error': f"Scan {scan['id']} has empty intensity array"})
                     output_status = 1
+                    scan_status[scan_idx] = True
                 if max(scan['intensity array']) == 0:
-                    output_writer.writerow({'original_filename': input_file, 'error': f"Scan {scan['id']} contains no peaks"})
+                    output_writer.writerow({'error_level': 'warning',
+                                            'scan': find_integer_at_end(scan['id']),
+                                            'original_filename': input_file,
+                                            'error': f"Scan {scan['id']} contains no peaks"})
                     output_status = 1
+                    scan_status[scan_idx] = True
+            if np.all(scan_status):
+                output_writer.writerow({'error_level': 'critical',
+                                        'scan': 'N/A',
+                                        'original_filename': input_file,
+                                        'error': 'All scans in this file are unreadable or empty. Please check the file and try again.'})
+                output_status = 1
             
     return output_status
 

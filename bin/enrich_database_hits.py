@@ -62,7 +62,12 @@ def main():
             print("Error Parsing")
 
     # outputting
-    output_df = pd.DataFrame(results_list)
+    if len(results_list) == 0:  # Spoof a result so we show an empty table
+        columns = ['query_filename', 'query_index', 'database_id', 'database_scan', 
+                   'db_strain_name', 'db_culture_collection', 'db_taxonomy', 'distance']
+        output_df = pd.DataFrame(columns=columns)
+    else:
+        output_df = pd.DataFrame(results_list)
     output_df.to_csv(args.enriched_db_results, sep="\t", index=False)
 
 
