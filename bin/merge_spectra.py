@@ -66,7 +66,7 @@ def main():
     parser.add_argument('input_folder')
     parser.add_argument('output_folder')
     parser.add_argument('--merge_replicates', default="No")
-    parser.add_argument('--bin_size', default=10.0, type=float)
+    parser.add_argument('--bin_size', default=1.0, type=float)
     parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value.")
     parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value.")
 

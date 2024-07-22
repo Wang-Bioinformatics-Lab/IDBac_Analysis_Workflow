@@ -67,7 +67,7 @@ def load_data(input_filename):
 
     return ms1_df, ms2_df
 
-def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=10.0, min_mz=2000.0, max_mz=20000.0, merge_replicates="No"):
+def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=1.0, min_mz=2000.0, max_mz=20000.0, merge_replicates="No"):
     """
     Bins MS1 dataframe into a 1d vector that is the intensity value for each bin
     

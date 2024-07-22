@@ -11,7 +11,7 @@ import numpy as np
 
 from utils import load_data, spectrum_binner, compute_distances_binned
 
-bin_size = 10.0
+bin_size = 1.0
 
 # Create an LRU Cache from functools
 @lru_cache(maxsize=1000)
@@ -138,7 +138,7 @@ def main():
     parser.add_argument('--merge_replicates', default="Yes")
     parser.add_argument('--score_threshold', default=0.7, type=float)
     parser.add_argument('--distance', default="cosine", help="The distance metric to use for the search", choices=["cosine", "euclidean", "manhattan"])
-    parser.add_argument('--bin_size', default=10.0, type=float, help="Size of the spectra bins for distance calculations.")
+    parser.add_argument('--bin_size', default=1.0, type=float, help="Size of the spectra bins for distance calculations.")
     parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value to consider for binning.")
     parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value to consider for binning.")
     
