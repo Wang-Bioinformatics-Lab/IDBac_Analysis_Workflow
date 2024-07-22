@@ -313,12 +313,7 @@ process summarizeSpectra{
 }
 
 workflow {
-    input_mzml_files_ch = Channel.fromPath(params.input_spectra_folder + "/*.mzML")
-
-    // If we have no input files error out early
-    if (input_mzml_files_ch.isEmpty()) {
-        error "No mzML files found in input_spectra_folder"
-    }
+    input_mzml_files_ch = Channel.fromPath(params.input_spectra_folder + "/*.mzML", checkIfExists: true) // If we have no input files error out early
 
     // Pre-flight check
     pre_flight_ch = input_mzml_files_ch
