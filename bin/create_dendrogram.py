@@ -21,15 +21,17 @@ def _load_metadata(input_filename):
     elif input_filename.endswith(".csv"):
         input_df = pd.read_csv(input_filename, sep=",")
     elif input_filename.endswith(".xlsx"):
-        input_df = pd.read_excel(input_filename)
-        # If it contains multiple tables, get the one named "Metadata sheet"
-        if isinstance(metadata_df, dict):
-            metadata_df = metadata_df["Metadata sheet"]
+        input_df = pd.read_excel(input_filename, sheet_name=None)
+        if "Metadata sheet" in input_df:
+            input_df = input_df["Metadata sheet"]
+        else:
+            input_df = input_df[list(input_df.keys())[0]]
     elif input_filename.endswith(".xls"):
-        input_df = pd.read_excel(input_filename)
-        # If it contains multiple tables, get the one named "Metadata sheet"
-        if isinstance(metadata_df, dict):
-            metadata_df = metadata_df["Metadata sheet"]
+        input_df = pd.read_excel(input_filename, sheet_name=None)
+        if "Metadata sheet" in input_df:
+            input_df = input_df["Metadata sheet"]
+        else:
+            input_df = input_df[list(input_df.keys())[0]]
     else:
         input_df = pd.read_csv(input_filename, sep=None)
 
