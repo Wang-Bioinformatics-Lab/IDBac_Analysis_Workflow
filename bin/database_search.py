@@ -8,6 +8,7 @@ from tqdm import tqdm
 import glob
 from functools import lru_cache
 import numpy as np
+import logging
 
 from utils import load_data, spectrum_binner, compute_distances_binned
 
@@ -141,11 +142,22 @@ def main():
     parser.add_argument('--bin_size', default=1.0, type=float, help="Size of the spectra bins for distance calculations.")
     parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value to consider for binning.")
     parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value to consider for binning.")
+    parser.add_argument('--debug', action='store_true')
     
     args = parser.parse_args()
 
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+        # Log all params
+        for arg in vars(args):
+            logging.debug("%s: %s", arg, getattr(args, arg))
+    else:
+        logging.basicConfig(level=logging.INFO)
+
     # Loading the database, this will also merge the spectra
     database_df = load_database(args.database_filtered_json)
+    logging.debug("Database shape: {}".format(database_df.shape))
+    logging.debug("database_df {}".format(database_df))
 
     # Create a row count column, starting at 0, counting all the way up, will be useful for keeping track of things when we do matrix multiplication
     database_df["row_count"] = np.arange(len(database_df))
@@ -181,11 +193,17 @@ def main():
         spectra_binned_df[numerical_columns] = spectra_binned_df[numerical_columns].fillna(0)
         
         # Add missing columns
-        for column in merged_numerical_columns:
-            if column not in spectra_binned_df.columns:
-                spectra_binned_df[column] = 0
+        missing_columns = [column for column in merged_numerical_columns if column not in spectra_binned_df.columns]
+        missing_df = pd.DataFrame(0, index=spectra_binned_df.index, columns=missing_columns)
+        spectra_binned_df = pd.concat([spectra_binned_df, missing_df], axis=1)
+
 
         query_data_np = spectra_binned_df[merged_numerical_columns].to_numpy()
+        logging.debug("query_data_np shape: {}".format(query_data_np.shape))
+        logging.debug("query_data_np: {}".format(query_data_np))
+        logging.debug("query_data_np max: {}".format(np.max(query_data_np)))
+        logging.debug("query_data_np min: {}".format(np.min(query_data_np)))
+        logging.debug("query_data_np mean: {}".format(np.mean(query_data_np)))
 
         # Fill in the missing values with 0
         numerical_columns = [x for x in spectra_binned_db_df.columns if x.startswith("BIN_")]

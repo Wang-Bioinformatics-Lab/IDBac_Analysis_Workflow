@@ -15,6 +15,8 @@ params.metadata_column = "None"
 
 params.heatmap_bin_size = 1.0
 
+params.debug_flag = "" // Should be set to either "--debug" or ""
+
 TOOL_FOLDER = "$baseDir/bin"
 
 /* Simple sanity checks on mzML files that we can warn the users about
@@ -105,7 +107,8 @@ process mergeInputSpectra {
     --merge_replicates ${params.merge_replicates} \
     --mass_range_lower ${params.database_search_mass_range_lower} \
     --mass_range_upper ${params.database_search_mass_range_upper} \
-    --bin_size ${params.heatmap_bin_size}
+    --bin_size ${params.heatmap_bin_size} \
+    --debug
 
     # Dump merge parameters to a file
     echo "merge_replicates: ${params.merge_replicates}" > merge_parameters.txt
@@ -227,7 +230,8 @@ process createDendrogram {
     --distance ${params.distance} \
     --metadata_column "${params.metadata_column}" \
     --mass_range_lower ${params.database_search_mass_range_lower} \
-    --mass_range_upper ${params.database_search_mass_range_upper}
+    --mass_range_upper ${params.database_search_mass_range_upper} \
+    $params.debug_flag
     """
 }
 
@@ -251,6 +255,8 @@ process downloadDatabase {
 process databaseSearch {
     publishDir "./nf_output/search", mode: 'copy'
 
+    cache false
+
     conda "$TOOL_FOLDER/conda_env.yml"
 
     input:
@@ -272,7 +278,9 @@ process databaseSearch {
     --merge_replicates ${params.merge_replicates} \
     --score_threshold ${params.database_search_threshold} \
     --mass_range_lower ${params.database_search_mass_range_lower} \
-    --mass_range_upper ${params.database_search_mass_range_upper}
+    --mass_range_upper ${params.database_search_mass_range_upper} \
+    --distance ${params.distance} \
+    $params.debug_flag
     """
 }
 
@@ -366,7 +374,11 @@ workflow {
     enriched_results_db_ch = enrichDatabaseSearch(search_results_ch)
 
     // Creating Spectra Dendrogram
-    metadata_file_ch = Channel.fromPath(params.input_metadata_file)
+    if (params.input_metadata_file != "") {
+        metadata_file_ch = Channel.fromPath(params.input_metadata_file)
+    } else {
+        metadata_file_ch = Channel.fromPath("None")
+    }
     createDendrogram(baseline_query_spectra_ch.collect(), metadata_file_ch, enriched_results_db_ch)
 
 }

@@ -9,15 +9,16 @@ from pyteomics import mzxml, mzml
 from psims.mzml.writer import MzMLWriter
 from tqdm import tqdm
 import glob
-
+import logging
 
 def load_data(input_filename):
     try:
         ms1_df, ms2_df = msql_fileloading.load_data(input_filename)
-
+        logging.debug("Loaded data using msql_fileloading")
         return ms1_df, ms2_df
     except:
         print(f"Error loading data for {input_filename}, falling back on default")
+        logging.debug("Error loading data for {}, falling back on default".format(input_filename))
 
     MS_precisions = {
         1: 5e-6,
@@ -69,8 +70,13 @@ def main():
     parser.add_argument('--bin_size', default=1.0, type=float)
     parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value.")
     parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value.")
-
+    parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
 
     bin_size = args.bin_size
 
@@ -103,8 +109,10 @@ def main():
         bins_to_remove = []
         # merging replicates
         if args.merge_replicates == "Yes":
+            logging.debug("Merging replicates")
             # Lets do the merge
             all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
+            logging.debug("Got {} bins".format(len(all_bins)))
             for bin in all_bins:
                 all_values = spectra_binned_df[bin]
 
@@ -118,6 +126,7 @@ def main():
                     bins_to_remove.append(bin)
 
             # Removing the bins
+            logging.debug("Removing {} bins.".format(len(bins_to_remove)))
             spectra_binned_df = spectra_binned_df.drop(bins_to_remove, axis=1)
 
             # Now lets get the mean for each bin
@@ -156,5 +165,5 @@ def main():
                         scan += 1
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':   
     main()

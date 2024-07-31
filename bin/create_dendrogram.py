@@ -7,6 +7,7 @@ import json
 import numpy as np
 
 from utils import load_data, spectrum_binner, compute_distances_binned
+import logging
 
 from tqdm import tqdm
 import glob
@@ -57,8 +58,18 @@ def main():
     parser.add_argument('--bin_size', default=1.0, type=float, help="Size of the spectra bins for distance calculations.")
     parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value to consider for binning.")
     parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value to consider for binning.")
+    parser.add_argument('--debug', action='store_true')
 
     args = parser.parse_args()
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+        # Log all params
+        for arg in vars(args):
+            logging.debug("%s: %s", arg, getattr(args, arg))
+    else:
+        logging.basicConfig(level=logging.INFO)
+
 
     try:
         metadata_df = _load_metadata(args.metadata_filename)
@@ -74,6 +85,8 @@ def main():
     for input_filename in all_input_files:
         print("Loading data from {}".format(input_filename))
         ms1_df, _ = load_data(input_filename)
+        logging.debug("Loaded data from {}".format(input_filename))
+        logging.debug("MS1 shape: {}".format(ms1_df.shape))
 
         spectra_binned_df = spectrum_binner(ms1_df,
                                             input_filename,
@@ -81,18 +94,24 @@ def main():
                                             min_mz=args.mass_range_lower,
                                             max_mz=args.mass_range_upper,
                                             merge_replicates=args.merge_replicates)
+        logging.debug("Binned data shape: {}".format(spectra_binned_df.shape))
 
         all_spectra_df_list.append(spectra_binned_df)
 
 
     all_spectra_df = pd.concat(all_spectra_df_list)
+    logging.debug("All spectra shape: {}".format(all_spectra_df.shape))
 
     numerical_columns = [x for x in all_spectra_df.columns if x.startswith("BIN_")]
+    logging.debug("Got {} numerical columns".format(len(numerical_columns)))
 
     # Fill in the missing values with 0
     all_spectra_df[numerical_columns] = all_spectra_df[numerical_columns].fillna(0)
+    logging.debug("all_spectra_df {}".format(all_spectra_df))
 
     data_np = all_spectra_df[numerical_columns].to_numpy()
+    logging.debug("data_np shape: {}".format(data_np.shape))
+    logging.debug("data_np: {}".format(data_np))
 
     # Creating labels
     all_spectra_df["label"] = all_spectra_df["filename"].apply(lambda x: os.path.basename(x)) + ":" + all_spectra_df["scan"].astype(str)
@@ -103,6 +122,8 @@ def main():
     if len(data_np) > 1:
         # Calculating the distances between all the spectra
         distance_matrix = compute_distances_binned(data_np, distance_metric=args.distance)
+        logging.debug("Distance matrix shape: {}".format(distance_matrix.shape))
+        logging.debug("Distance matrix: {}".format(distance_matrix))
 
         # Merge in the labels
         for index_i, label_i in enumerate(all_labels_list):

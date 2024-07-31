@@ -6,7 +6,7 @@ dependencies:
   - openpyxl
   - pip:
     - pandas
-    - massql
+    - massql==0.0.15
     - requests
     - python-dotenv
     - PyYAML
