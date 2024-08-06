@@ -92,12 +92,15 @@ process mergeInputSpectra {
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
+    cache false
+
     input:
     file "input_spectra/*"
 
     output:
     file 'merged/*.mzML'
     file 'merge_parameters.txt'
+    file 'bin_counts/*.csv' optional true   // Only outputs if it's merged
 
     """
     mkdir merged
