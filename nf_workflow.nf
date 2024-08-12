@@ -6,7 +6,7 @@ params.input_small_molecule_folder = ""
 params.input_media_control_folder = ""
 params.input_metadata_file = ""
 
-params.merge_replicates = "No"
+params.merge_replicates = "Yes"
 params.distance = "presence"
 params.database_search_threshold = "0.7"
 params.database_search_mass_range_lower = "2000"

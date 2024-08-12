@@ -54,20 +54,10 @@ parameterlist:
     - displayname: Parameters
       paramtype: section
 
-    - displayname: Merge Replicates
-      paramtype: select
-      nf_paramname: merge_replicates
-      formvalue: "Yes"
-      options:
-        - value: "No"
-          display: "No"
-        - value: "Yes"
-          display: "Yes"
-
     - displayname: Distance Metric
       paramtype: select
       nf_paramname: distance
-      formvalue: "presence"
+      formvalue: "cosine"
       options:
         - value: "presence"
           display: "presence"
@@ -96,10 +86,3 @@ parameterlist:
       formplaceholder: Enter the Database Search Distance Threshold
       formvalue: "0.5"
       tooltip: "The maximumum distance threshold for a protein to be considered a match to the database."
-
-    - displayname: Metadata Column to Display
-      paramtype: text
-      nf_paramname: metadata_column
-      formplaceholder: Enter the metadata_column
-      formvalue: "None"
-      tooltip: "Pick the column in your metadata you want to visualize"
