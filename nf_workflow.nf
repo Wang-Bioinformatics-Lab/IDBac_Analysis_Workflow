@@ -6,7 +6,7 @@ params.input_small_molecule_folder = ""
 params.input_media_control_folder = ""
 params.input_metadata_file = ""
 
-params.merge_replicates = "No"
+params.merge_replicates = "Yes"
 params.distance = "presence"
 params.database_search_threshold = "0.7"
 params.database_search_mass_range_lower = "2000"
@@ -92,12 +92,15 @@ process mergeInputSpectra {
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
+    cache true
+
     input:
     file "input_spectra/*"
 
     output:
     file 'merged/*.mzML'
     file 'merge_parameters.txt'
+    file 'bin_counts/*.csv' optional true   // Only outputs if it's merged
 
     """
     mkdir merged
@@ -153,7 +156,7 @@ process baselineCorrectionBlank {
 
 process small_molecule_media_control {
     publishDir "./nf_output/small_molecule/media_control", mode: 'copy'
-    cache false
+    cache true
     conda "$TOOL_FOLDER/conda_env.yml"
 
     input:
@@ -177,7 +180,7 @@ process small_molecule_media_control {
 process summarizeSmallMolecule {
     publishDir "./nf_output/small_molecule/", mode: 'copy'
 
-    cache false
+    cache true
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
@@ -198,7 +201,7 @@ process summarizeSmallMolecule {
 process createDendrogram {
     publishDir "./nf_output", mode: 'copy'
 
-    cache false
+    cache true
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
@@ -255,7 +258,7 @@ process downloadDatabase {
 process databaseSearch {
     publishDir "./nf_output/search", mode: 'copy'
 
-    cache false
+    cache true
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
@@ -284,13 +287,28 @@ process databaseSearch {
     """
 }
 
+// Download database summary with retry up to 5 times
+process downloadDatabaseSummary {
+    output:
+    file 'idbac_database_summary.json'
+
+    cache false
+
+    """
+    wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 5 https://idbac.org/api/spectra -O idbac_database_summary.json
+    """
+}
+
 process enrichDatabaseSearch {
     publishDir "./nf_output/search", mode: 'copy'
 
     conda "$TOOL_FOLDER/conda_env_enrichment.yml"
 
+    cache false
+
     input:
     file input_results
+    file idbac_database_summary
     
     output:
     file 'enriched_db_results.tsv'
@@ -298,7 +316,8 @@ process enrichDatabaseSearch {
     """
     python $TOOL_FOLDER/enrich_database_hits.py \
     $input_results \
-    enriched_db_results.tsv
+    enriched_db_results.tsv \
+    --database_json $idbac_database_summary
     """
 }
 
@@ -371,7 +390,8 @@ workflow {
     (search_results_ch, output_database_mzML) = databaseSearch(output_idbac_database_ch, baseline_query_spectra_ch.collect())
 
     // Enriching database search results
-    enriched_results_db_ch = enrichDatabaseSearch(search_results_ch)
+    db_summary = downloadDatabaseSummary()
+    enriched_results_db_ch = enrichDatabaseSearch(search_results_ch, db_summary)
 
     // Creating Spectra Dendrogram
     if (params.input_metadata_file != "") {

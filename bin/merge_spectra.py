@@ -4,6 +4,7 @@ import argparse
 import pandas as pd
 import uuid
 import json
+import numpy as np
 from massql import msql_fileloading
 from pyteomics import mzxml, mzml
 from psims.mzml.writer import MzMLWriter
@@ -113,6 +114,17 @@ def main():
             # Lets do the merge
             all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
             logging.debug("Got {} bins".format(len(all_bins)))
+
+            bin_counts = (spectra_binned_df[all_bins] > 0).mean(axis=0)
+            # Save bin counts to a file
+            bin_counts_filename = os.path.join("bin_counts", os.path.basename(input_filename) + ".csv")
+            logging.debug("Saving bin counts to {}".format(bin_counts_filename))
+            os.makedirs(os.path.dirname(bin_counts_filename), exist_ok=True)
+            temp_df = pd.DataFrame(bin_counts, columns=['presence'])
+            temp_df.index.name = 'bin'
+            temp_df.to_csv(bin_counts_filename)
+            del temp_df
+
             for bin in all_bins:
                 all_values = spectra_binned_df[bin]
 
