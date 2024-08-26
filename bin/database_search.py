@@ -28,7 +28,7 @@ def _retreive_kb_metadata(database_id):
 
     return spectrum_dict
 
-def load_database(database_filtered_json):
+def load_database(database_filtered_json, mz_min, mz_max):
     all_database_spectra = json.load(open(database_filtered_json))
 
     formatted_database_spectra = []
@@ -37,6 +37,8 @@ def load_database(database_filtered_json):
         formatted_spectrum["database_id"] = spectrum["database_id"]
 
         for peak in spectrum["peaks"]:
+            if peak["mz"] < mz_min or peak["mz"] > mz_max:
+                continue
             formatted_spectrum["BIN_" + str(int(peak["mz"] / bin_size))] = peak["i"]
 
         formatted_database_spectra.append(formatted_spectrum)
@@ -156,7 +158,7 @@ def main():
         logging.basicConfig(level=logging.INFO)
 
     # Loading the database, this will also merge the spectra
-    database_df = load_database(args.database_filtered_json)
+    database_df = load_database(args.database_filtered_json, args.mass_range_lower, args.mass_range_upper)
     logging.debug("Database shape: {}".format(database_df.shape))
     logging.debug("database_df {}".format(database_df))
 
