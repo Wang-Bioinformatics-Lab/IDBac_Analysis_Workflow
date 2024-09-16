@@ -120,7 +120,7 @@ def main():
             bin_counts_filename = os.path.join("bin_counts", os.path.basename(input_filename) + ".csv")
             logging.debug("Saving bin counts to {}".format(bin_counts_filename))
             os.makedirs(os.path.dirname(bin_counts_filename), exist_ok=True)
-            temp_df = pd.DataFrame(bin_counts, columns=['presence'])
+            temp_df = pd.DataFrame(bin_counts, columns=[str(os.path.basename(input_filename))])
             temp_df.index.name = 'bin'
             temp_df.to_csv(bin_counts_filename)
             del temp_df

@@ -121,6 +121,26 @@ process mergeInputSpectra {
     """
 }
 
+process mergeBinCounts {
+    publishDir "./nf_output/bin_counts", mode: 'copy'
+
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    cache true
+
+    input:
+    path bin_count_tables, stageAs: 'bin_count_tables/*.csv'
+
+    output:
+    file "merged/*.csv"
+
+    """
+    python $TOOL_FOLDER/merge_bin_counts.py \
+   --input_folder "bin_count_tables" \
+    --output_folder "merged/"
+    """
+}
+
 process baselineCorrectionSmallMolecule {
     publishDir "./nf_output/small_molecule/baseline_corrected", mode: 'copy'
 
@@ -378,10 +398,13 @@ workflow {
     baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
 
     // Doing merging of spectra
-    (merged_spectra_ch, merge_params) = mergeInputSpectra(baseline_query_spectra_ch.collect())
+    (merged_spectra_ch, merge_params, count_tables) = mergeInputSpectra(baseline_query_spectra_ch.collect())
 
     // Summarizing Input
     summarizeSpectra(merged_spectra_ch.collect())
+
+    // Merge Bin Counts into a single file
+    mergeBinCounts(count_tables.collect())
 
     // Downloading Database
     (output_idbac_database_ch) = downloadDatabase(1)
