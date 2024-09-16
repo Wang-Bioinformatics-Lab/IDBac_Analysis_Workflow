@@ -141,3 +141,56 @@ def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, di
             
         
     return selected_distance_fun(np_data_X, np_data_Y)
+
+
+def load_metadata_file(metadata_path:str):
+    """
+    Reads a metadata file and converts it to a pandas dataframe. 
+    
+    Args:
+    metadata_path: str, path to the metadata file
+
+    Returns:
+    metadata_df: pd.DataFrame, metadata
+
+    Raises:
+    ValueError: if the metadata file is not a CSV, XLSX, XLS, or TSV file
+    """
+    if metadata_path.endswith('.csv'):
+        metadata_df = pd.read_csv(metadata_path)
+    elif metadata_path.endswith('.xlsx'):
+        metadata_df = pd.read_excel(metadata_path)
+        # If it contains multiple tables, get the one named "Metadata sheet"
+        if isinstance(metadata_df, dict):
+            metadata_df = pd.read_excel(metadata_path, sheet_name=None)
+        if 'Metadata sheet' in metadata_df:
+            metadata_df = metadata_df['Metadata sheet']
+        elif 'Metadata template' in metadata_df:
+            metadata_df = metadata_df['Metadata template']
+        else:
+            # If there is only one sheet, use that
+            if len(metadata_df) == 1:
+                metadata_df = list(metadata_df.values())[0]
+            else:
+                raise ValueError("Excel file should contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'")
+    elif metadata_path.endswith('.xls'):
+        metadata_df = pd.read_excel(metadata_path)
+        # If it contains multiple tables, get the one named "Metadata sheet"
+        if isinstance(metadata_df, dict):
+            metadata_df = pd.read_excel(metadata_path, sheet_name=None)
+        if 'Metadata sheet' in metadata_df:
+            metadata_df = metadata_df['Metadata sheet']
+        elif 'Metadata template' in metadata_df:
+            metadata_df = metadata_df['Metadata template']
+        else:
+            # If there is only one sheet, use that
+            if len(metadata_df) == 1:
+                metadata_df = list(metadata_df.values())[0]
+            else:
+                raise ValueError("Excel file should contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'")
+    elif metadata_path.endswith('.tsv'):
+        metadata_df = pd.read_csv(metadata_path, sep='\t')
+    else:
+        raise ValueError(f'Metadata file must be a CSV, XLSX, XLS, or TSV file, but got {metadata_path} instead.')
+    
+    return metadata_df

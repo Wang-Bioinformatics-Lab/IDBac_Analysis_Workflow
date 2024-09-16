@@ -5,6 +5,8 @@ from pyteomics import mzxml, mzml
 from psims.mzml.writer import MzMLWriter
 # from merge_spectra import load_data
 
+from utils import load_metadata_file
+
 def load_data(input_filepath):
     
     ms1_df_list = []
@@ -102,36 +104,7 @@ def main():
     if not os.path.exists(output_folder):
         os.makedirs(output_folder, exist_ok=True)
         
-    if args.metadata_file.endswith('.csv'):
-        metadata_df = pd.read_csv(args.metadata_file)
-    elif args.metadata_file.endswith('.xlsx'):
-        metadata_df = pd.read_excel(args.metadata_file, sheet_name=None)
-        if 'Metadata sheet' in metadata_df:
-            metadata_df = metadata_df['Metadata sheet']
-        elif 'Metadata template' in metadata_df:
-            metadata_df = metadata_df['Metadata template']
-        else:
-            # If there is only one sheet, use that
-            if len(metadata_df) == 1:
-                metadata_df = list(metadata_df.values())[0]
-            else:
-                raise ValueError("Excel file should contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'")
-    elif args.metadata_file.endswith('.xls'):
-        metadata_df = pd.read_excel(args.metadata_file, sheet_name=None)
-        if 'Metadata sheet' in metadata_df:
-            metadata_df = metadata_df['Metadata sheet']
-        elif 'Metadata template' in metadata_df:
-            metadata_df = metadata_df['Metadata template']
-        else:
-            # If there is only one sheet, use that
-            if len(metadata_df) == 1:
-                metadata_df = list(metadata_df.values())[0]
-            else:
-                raise ValueError("Excel file should contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'")
-    elif args.metadata_file.endswith('.tsv'):
-        metadata_df = pd.read_csv(args.metadata_file, sep='\t')
-    else:
-        raise ValueError(f'Metadata file must be a CSV, XLSX, XLS, or TSV file, but got {args.metadata_file} instead.')
+    metadata_df = load_metadata_file(args.metadata_file)
     
     # Since sometimes the metadata has asterisks in the 'Scan/Coordinate' column that extend beyond the remainder of the values, we need to remove these rows
     metadata_df = metadata_df.dropna(subset=[x for x in metadata_df.columns if 'Scan/Coordinate' != x], how='all')
