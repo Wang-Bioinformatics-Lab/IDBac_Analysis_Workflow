@@ -159,7 +159,7 @@ def load_metadata_file(metadata_path:str):
     if metadata_path.endswith('.csv'):
         metadata_df = pd.read_csv(metadata_path)
     elif metadata_path.endswith('.xlsx'):
-        metadata_df = pd.read_excel(metadata_path)
+        metadata_df = pd.read_excel(metadata_path, sheet_name=None)
         # If it contains multiple tables, get the one named "Metadata sheet"
         if isinstance(metadata_df, dict):
             metadata_df = pd.read_excel(metadata_path, sheet_name=None)
@@ -172,9 +172,9 @@ def load_metadata_file(metadata_path:str):
             if len(metadata_df) == 1:
                 metadata_df = list(metadata_df.values())[0]
             else:
-                raise ValueError("Excel file should contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'")
+                raise ValueError(f"Excel file should contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'. Instead found {metadata_df.keys()}")
     elif metadata_path.endswith('.xls'):
-        metadata_df = pd.read_excel(metadata_path)
+        metadata_df = pd.read_excel(metadata_path, sheet_name=None)
         # If it contains multiple tables, get the one named "Metadata sheet"
         if isinstance(metadata_df, dict):
             metadata_df = pd.read_excel(metadata_path, sheet_name=None)
@@ -187,7 +187,7 @@ def load_metadata_file(metadata_path:str):
             if len(metadata_df) == 1:
                 metadata_df = list(metadata_df.values())[0]
             else:
-                raise ValueError("Excel file should contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'")
+                raise ValueError(f"Excel file should contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'. Instead found {metadata_df.keys()}")
     elif metadata_path.endswith('.tsv'):
         metadata_df = pd.read_csv(metadata_path, sep='\t')
     else:
