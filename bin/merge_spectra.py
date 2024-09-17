@@ -87,6 +87,10 @@ def main():
 
     all_spectra_df_list = []
 
+    replicate_list = []
+    bin_counts_list = []
+
+
     for input_filename in all_input_files:
         print("Loading data from {}".format(input_filename))
         ms1_df, ms2_df = load_data(input_filename)
@@ -106,24 +110,23 @@ def main():
         # Turning each scan into a 1d vector that is the intensity value for each bin
         spectra_binned_df = ms1_df.pivot(index='scan', columns='bin_name', values='i').reset_index()
         spectra_binned_df["filename"] = os.path.basename(input_filename)
+       
+        # Track number of replicates per file
+        replicate_list.append({"filename": os.path.basename(input_filename), "replicates": len(spectra_binned_df)})
 
         bins_to_remove = []
         # merging replicates
         if args.merge_replicates == "Yes":
             logging.debug("Merging replicates")
+
             # Lets do the merge
             all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
             logging.debug("Got {} bins".format(len(all_bins)))
 
             bin_counts = (spectra_binned_df[all_bins] > 0).sum(axis=0)
-            # Save bin counts to a file
-            bin_counts_filename = os.path.join("bin_counts", os.path.basename(input_filename) + ".csv")
-            logging.debug("Saving bin counts to {}".format(bin_counts_filename))
-            os.makedirs(os.path.dirname(bin_counts_filename), exist_ok=True)
-            temp_df = pd.DataFrame(bin_counts, columns=[str(os.path.basename(input_filename))])
-            temp_df.index.name = 'bin'
-            temp_df.to_csv(bin_counts_filename)
-            del temp_df
+            bin_counts.columns = ['bin', 'filename']
+            bin_counts.attrs = {'filename': os.path.basename(input_filename)}
+            bin_counts_list.append(bin_counts)
 
             for bin in all_bins:
                 all_values = spectra_binned_df[bin]
@@ -172,6 +175,20 @@ def main():
                             ])
                         
                         scan += 1
+
+    # Output the number of replicates to a file
+    output_filename = os.path.join("bin_counts", "replicates.csv")
+    os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+    df = pd.DataFrame(replicate_list)
+    df.to_csv(output_filename)
+
+    bin_counts_filename = "bin_counts/bin_counts.csv"
+    logging.debug("Saving bin counts to {}".format(bin_counts_filename))
+    os.makedirs(os.path.dirname(bin_counts_filename), exist_ok=True)
+    # Merge the bin counts dataframes
+    df = pd.concat(bin_counts_list, axis=1)
+    df.columns = [x.attrs['filename'] for x in bin_counts_list]
+    df.to_csv(bin_counts_filename)
 
 
 if __name__ == '__main__':   

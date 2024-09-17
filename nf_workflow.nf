@@ -88,11 +88,11 @@ process baselineCorrection {
 // Optionally merges all spectra within the same file
 // Note: This is only used for plotting, the outputs are not used for database search
 process mergeInputSpectra {
-    publishDir "./nf_output", mode: 'copy'
+    publishDir "./nf_output", mode: 'copy', pattern: "*.mzML"
+    publishDir "./nf_output", mode: 'copy', pattern: "merge_parameters.txt"
+    publishDir "./nf_output", mode: 'copy', pattern: "bin_counts/*"
 
     conda "$TOOL_FOLDER/conda_env.yml"
-
-    cache true
 
     input:
     file "input_spectra/*"
@@ -100,7 +100,8 @@ process mergeInputSpectra {
     output:
     file 'merged/*.mzML'
     file 'merge_parameters.txt'
-    file 'bin_counts/*.csv' optional true   // Only outputs if it's merged
+    file 'bin_counts/bin_counts.csv' optional true   // Only outputs if it's merged
+    file 'bin_counts/replicates.csv' optional true
 
     """
     mkdir merged
@@ -118,26 +119,6 @@ process mergeInputSpectra {
     echo "mass_range_lower: ${params.database_search_mass_range_lower}" >> merge_parameters.txt
     echo "mass_range_upper: ${params.database_search_mass_range_upper}" >> merge_parameters.txt
     echo "bin_size: ${params.heatmap_bin_size}" >> merge_parameters.txt
-    """
-}
-
-process mergeBinCounts {
-    publishDir "./nf_output/bin_counts", mode: 'copy'
-
-    conda "$TOOL_FOLDER/conda_env.yml"
-
-    cache true
-
-    input:
-    path bin_count_tables, stageAs: 'bin_count_tables/*.csv'
-
-    output:
-    file "merged/*.csv"
-
-    """
-    python $TOOL_FOLDER/merge_bin_counts.py \
-   --input_folder "bin_count_tables" \
-    --output_folder "merged/"
     """
 }
 
@@ -398,13 +379,10 @@ workflow {
     baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
 
     // Doing merging of spectra
-    (merged_spectra_ch, merge_params, count_tables) = mergeInputSpectra(baseline_query_spectra_ch.collect())
+    (merged_spectra_ch, merge_params, count_tables, replicate_counts) = mergeInputSpectra(baseline_query_spectra_ch.collect())
 
     // Summarizing Input
     summarizeSpectra(merged_spectra_ch.collect())
-
-    // Merge Bin Counts into a single file
-    mergeBinCounts(count_tables.collect())
 
     // Downloading Database
     (output_idbac_database_ch) = downloadDatabase(1)
