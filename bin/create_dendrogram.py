@@ -6,7 +6,7 @@ import uuid
 import json
 import numpy as np
 
-from utils import load_data, spectrum_binner, compute_distances_binned
+from utils import load_data, spectrum_binner, compute_distances_binned, load_metadata_file
 import logging
 
 from tqdm import tqdm
@@ -70,9 +70,8 @@ def main():
     else:
         logging.basicConfig(level=logging.INFO)
 
-
     try:
-        metadata_df = _load_metadata(args.metadata_filename)
+        metadata_df = load_metadata_file(args.metadata_filename)
     except:
         metadata_df = None
 

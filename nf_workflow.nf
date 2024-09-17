@@ -88,11 +88,11 @@ process baselineCorrection {
 // Optionally merges all spectra within the same file
 // Note: This is only used for plotting, the outputs are not used for database search
 process mergeInputSpectra {
-    publishDir "./nf_output", mode: 'copy'
+    publishDir "./nf_output", mode: 'copy', pattern: "*.mzML"
+    publishDir "./nf_output", mode: 'copy', pattern: "merge_parameters.txt"
+    publishDir "./nf_output", mode: 'copy', pattern: "bin_counts/*"
 
     conda "$TOOL_FOLDER/conda_env.yml"
-
-    cache true
 
     input:
     file "input_spectra/*"
@@ -100,7 +100,8 @@ process mergeInputSpectra {
     output:
     file 'merged/*.mzML'
     file 'merge_parameters.txt'
-    file 'bin_counts/*.csv' optional true   // Only outputs if it's merged
+    file 'bin_counts/bin_counts.csv' optional true   // Only outputs if it's merged
+    file 'bin_counts/replicates.csv' optional true
 
     """
     mkdir merged
@@ -378,7 +379,7 @@ workflow {
     baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
 
     // Doing merging of spectra
-    (merged_spectra_ch, merge_params) = mergeInputSpectra(baseline_query_spectra_ch.collect())
+    (merged_spectra_ch, merge_params, count_tables, replicate_counts) = mergeInputSpectra(baseline_query_spectra_ch.collect())
 
     // Summarizing Input
     summarizeSpectra(merged_spectra_ch.collect())
