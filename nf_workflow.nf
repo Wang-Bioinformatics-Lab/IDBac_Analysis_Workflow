@@ -88,7 +88,7 @@ process baselineCorrection {
 // Optionally merges all spectra within the same file
 // Note: This is only used for plotting, the outputs are not used for database search
 process mergeInputSpectra {
-    publishDir "./nf_output", mode: 'copy', pattern: "*.mzML"
+    publishDir "./nf_output", mode: 'copy', pattern: "merged/*.mzML"
     publishDir "./nf_output", mode: 'copy', pattern: "merge_parameters.txt"
     publishDir "./nf_output", mode: 'copy', pattern: "bin_counts/*"
 
