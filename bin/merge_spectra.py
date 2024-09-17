@@ -115,7 +115,7 @@ def main():
             all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
             logging.debug("Got {} bins".format(len(all_bins)))
 
-            bin_counts = (spectra_binned_df[all_bins] > 0).mean(axis=0)
+            bin_counts = (spectra_binned_df[all_bins] > 0).sum(axis=0)
             # Save bin counts to a file
             bin_counts_filename = os.path.join("bin_counts", os.path.basename(input_filename) + ".csv")
             logging.debug("Saving bin counts to {}".format(bin_counts_filename))
@@ -131,10 +131,7 @@ def main():
                 # Count non-zero values
                 non_zero_count = len(all_values[all_values > 0])
 
-                # Calculate percent non-zero
-                percent_non_zero = non_zero_count / len(all_values)
-
-                if percent_non_zero < 0.5:
+                if non_zero_count == 0:  # Remove bins in which nothing appears
                     bins_to_remove.append(bin)
 
             # Removing the bins
