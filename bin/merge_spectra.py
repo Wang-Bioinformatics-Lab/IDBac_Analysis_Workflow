@@ -7,7 +7,6 @@ import json
 import numpy as np
 from massql import msql_fileloading
 from pyteomics import mzxml, mzml
-from psims.mzml.writer import MzMLWriter
 from utils import write_spectra_df_to_mzML
 from tqdm import tqdm
 import glob
