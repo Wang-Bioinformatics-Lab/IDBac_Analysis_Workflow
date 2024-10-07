@@ -272,6 +272,7 @@ process databaseSearch {
     file 'db_results.tsv'
     file 'db_db_distance.tsv'
     file 'complete_output_results.tsv'
+    file 'query_spectra/*.mzML'
 
     """
     python $TOOL_FOLDER/database_search.py \

@@ -11,7 +11,7 @@ import numpy as np
 import logging
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 
-from utils import load_data, spectrum_binner, compute_distances_binned
+from utils import load_data, spectrum_binner, compute_distances_binned, write_spectra_df_to_mzML
 
 # Create an LRU Cache from functools
 @lru_cache(maxsize=1000)
@@ -160,6 +160,9 @@ def main():
                                             min_mz=args.mass_range_lower,
                                             max_mz=args.mass_range_upper,
                                             merge_replicates="Yes")
+
+        output_filename = os.path.join('query_spectra',  os.path.basename(input_filename))
+        write_spectra_df_to_mzML(output_filename, spectra_binned_df, bin_size)
         
         # Formatting Database to fill NAs
         
