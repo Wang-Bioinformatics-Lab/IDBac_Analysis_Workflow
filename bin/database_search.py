@@ -11,9 +11,7 @@ import numpy as np
 import logging
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 
-from utils import load_data, spectrum_binner, compute_distances_binned
-
-bin_size = 1.0
+from utils import load_data, spectrum_binner, compute_distances_binned, write_spectra_df_to_mzML
 
 # Create an LRU Cache from functools
 @lru_cache(maxsize=1000)
@@ -28,7 +26,7 @@ def _retreive_kb_metadata(database_id):
 
     return spectrum_dict
 
-def load_database(database_filtered_json, mz_min, mz_max):
+def load_database(database_filtered_json, mz_min, mz_max, bin_size):
     all_database_spectra = json.load(open(database_filtered_json))
 
     formatted_database_spectra = []
@@ -44,28 +42,6 @@ def load_database(database_filtered_json, mz_min, mz_max):
         formatted_database_spectra.append(formatted_spectrum)
 
     return pd.DataFrame(formatted_database_spectra)
-    
-
-    # Now we can make this into a dataframe that we can use as we did before
-    
-    # Now we need to create consensus spectra in the database
-    # max_mz = 15000.0
-
-    # # Filtering m/z
-    # db_spectra = db_spectra[db_spectra['mz'] < max_mz]
-
-    # # Bin the MS1 Data by m/z within each spectrum
-    # db_spectra['bin'] = (db_spectra['mz'] / bin_size).astype(int)
-
-    # # Now we need to group by scan and bin
-    # db_spectra = db_spectra.groupby(['scan', 'bin']).agg({'i': 'sum'}).reset_index()
-    # db_spectra["mz"] = db_spectra["bin"] * bin_size
-    # db_spectra["bin_name"] = "BIN_" + db_spectra["bin"].astype(str)
-
-    # # Turning each scan into a 1d vector that is the intensity value for each bin
-    # spectra_binned_df = db_spectra.pivot(index='scan', columns='bin_name', values='i').reset_index()
-
-    #return merged_spectra_df
 
 def compute_db_db_distance(database_df, db_numerical_columns, output_path, distance_metric="cosine"):
     """ This function computes the pairwise distance between the the database results in the first 
@@ -142,12 +118,14 @@ def main():
     parser.add_argument('--merge_replicates', default="Yes")
     parser.add_argument('--score_threshold', default=0.7, type=float)
     parser.add_argument('--distance', default="cosine", help="The distance metric to use for the search", choices=["cosine", "euclidean", "presence"])
-    parser.add_argument('--bin_size', default=1.0, type=float, help="Size of the spectra bins for distance calculations.")
+    parser.add_argument('--bin_size', default=10.0, type=float, help="Size of the spectra bins for distance calculations.")
     parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value to consider for binning.")
     parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value to consider for binning.")
     parser.add_argument('--debug', action='store_true')
     
     args = parser.parse_args()
+    
+    bin_size = float(args.bin_size)
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -158,7 +136,7 @@ def main():
         logging.basicConfig(level=logging.INFO)
 
     # Loading the database, this will also merge the spectra
-    database_df = load_database(args.database_filtered_json, args.mass_range_lower, args.mass_range_upper)
+    database_df = load_database(args.database_filtered_json, args.mass_range_lower, args.mass_range_upper, bin_size)
     logging.debug("Database shape: {}".format(database_df.shape))
     logging.debug("database_df {}".format(database_df))
 
@@ -171,7 +149,7 @@ def main():
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
 
     output_results_list = []
-    #for input_filename in all_input_files[:5]:
+
     for input_filename in all_input_files:
         # Reading Query
         ms1_df, _ = load_data(input_filename)
@@ -182,6 +160,9 @@ def main():
                                             min_mz=args.mass_range_lower,
                                             max_mz=args.mass_range_upper,
                                             merge_replicates="Yes")
+
+        output_filename = os.path.join('query_spectra',  os.path.basename(input_filename))
+        write_spectra_df_to_mzML(output_filename, spectra_binned_df, bin_size)
         
         # Formatting Database to fill NAs
         

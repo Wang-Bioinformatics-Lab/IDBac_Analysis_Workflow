@@ -13,7 +13,8 @@ params.database_search_mass_range_lower = "2000"
 params.database_search_mass_range_upper = "20000"
 params.metadata_column = "None"
 
-params.heatmap_bin_size = 1.0
+params.heatmap_bin_size = 1.0   // Heatmaps use 1.0 Da bins by default
+params.search_bin_size  = 10.0  // Database search uses 10.0 Da bins by default
 
 params.debug_flag = "" // Should be set to either "--debug" or ""
 
@@ -88,7 +89,7 @@ process baselineCorrection {
 // Optionally merges all spectra within the same file
 // Note: This is only used for plotting, the outputs are not used for database search
 process mergeInputSpectra {
-    publishDir "./nf_output", mode: 'copy', pattern: "*.mzML"
+    publishDir "./nf_output", mode: 'copy', pattern: "merged/*.mzML"
     publishDir "./nf_output", mode: 'copy', pattern: "merge_parameters.txt"
     publishDir "./nf_output", mode: 'copy', pattern: "bin_counts/*"
 
@@ -137,7 +138,7 @@ process baselineCorrectionSmallMolecule {
 
     """
     mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file "baselinecorrected/${input_file}"
+    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file "baselinecorrected/${input_file.fileName}"
     """
 }
 
@@ -151,7 +152,7 @@ process baselineCorrectionBlank {
     file 'baselinecorrected/*.mzML'
     """
     mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file baselinecorrected/${input_file}
+    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file baselinecorrected/$input_file
     """
 }
 
@@ -171,10 +172,10 @@ process small_molecule_media_control {
     """
     mkdir media_control
     python $TOOL_FOLDER/media_control.py \
-        --small_molecule_file $small_molecule_file \
+        --small_molecule_file "${small_molecule_file}" \
         --metadata_file $metadata_file \
         --media_control_dir media_control_dir \
-        --output_file media_controled/${small_molecule_file.fileName}
+        --output_file "media_controled/${small_molecule_file.fileName}"
     """
 }
 
@@ -207,7 +208,7 @@ process createDendrogram {
     conda "$TOOL_FOLDER/conda_env.yml"
 
     input:
-    file "input_spectra/*"
+    path input_file, stageAs: "input_spectra/*"
     file metadata_file
     file database_hits
 
@@ -218,26 +219,40 @@ process createDendrogram {
     file "output_distance_table.tsv" optional true
     file "output_histogram_data_directory"  optional true
 
-    """
-    mkdir output_histogram_data_directory
+    script:
+    
+    if ("${input_file.fileName}" != "input_spectra/No_Query_Spectra")
+        """
+        mkdir output_histogram_data_directory
 
-    python $TOOL_FOLDER/create_dendrogram.py \
-    input_spectra \
-    $metadata_file \
-    $database_hits \
-    output.html \
-    with_metadata.html \
-    with_database.html \
-    output_distance_table.tsv \
-    output_histogram_data_directory \
-    --merge_replicates ${params.merge_replicates} \
-    --distance ${params.distance} \
-    --metadata_column "${params.metadata_column}" \
-    --mass_range_lower ${params.database_search_mass_range_lower} \
-    --mass_range_upper ${params.database_search_mass_range_upper} \
-    $params.debug_flag
-    """
+        python $TOOL_FOLDER/create_dendrogram.py \
+        input_spectra \
+        $metadata_file \
+        $database_hits \
+        output.html \
+        with_metadata.html \
+        with_database.html \
+        output_distance_table.tsv \
+        output_histogram_data_directory \
+        --merge_replicates ${params.merge_replicates} \
+        --distance ${params.distance} \
+        --metadata_column "${params.metadata_column}" \
+        --mass_range_lower ${params.database_search_mass_range_lower} \
+        --mass_range_upper ${params.database_search_mass_range_upper} \
+        $params.debug_flag
+        """
+    else
+        """
+        mkdir -p output_histogram_data_directory
+        # Single line with "filename" and a newline
+        touch output_histogram_data_directory/labels_spectra.tsv
+        echo "filename" > output_histogram_data_directory/labels_spectra.tsv
+        # Empty numpy array
+        python3 -c "import numpy as np; np.save('output_histogram_data_directory/numerical_spectra.npy', np.array([[]]))"
+        """
+
 }
+
 
 process downloadDatabase {
     publishDir "./nf_output/library", mode: 'copy'
@@ -271,6 +286,7 @@ process databaseSearch {
     file 'db_results.tsv'
     file 'db_db_distance.tsv'
     file 'complete_output_results.tsv'
+    file 'query_spectra/*.mzML'
 
     """
     python $TOOL_FOLDER/database_search.py \
@@ -284,7 +300,8 @@ process databaseSearch {
     --mass_range_lower ${params.database_search_mass_range_lower} \
     --mass_range_upper ${params.database_search_mass_range_upper} \
     --distance ${params.distance} \
-    $params.debug_flag
+    --bin_size ${params.search_bin_size} \
+    $params.debug_flag \
     """
 }
 
@@ -341,7 +358,7 @@ process summarizeSpectra{
 }
 
 workflow {
-    input_mzml_files_ch = Channel.fromPath(params.input_spectra_folder + "/*.mzML", checkIfExists: true) // If we have no input files error out early
+    input_mzml_files_ch = Channel.fromPath(params.input_spectra_folder + "/*.mzML")
 
     // Pre-flight check
     pre_flight_ch = input_mzml_files_ch
@@ -376,6 +393,7 @@ workflow {
     }
 
     // Doing baseline correction
+    // baseline_query_spectra_ch = Channel.empty()
     baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
 
     // Doing merging of spectra
@@ -400,6 +418,24 @@ workflow {
     } else {
         metadata_file_ch = Channel.fromPath("None")
     }
-    createDendrogram(baseline_query_spectra_ch.collect(), metadata_file_ch, enriched_results_db_ch)
+
+    // If we have query spectra, we can create a dendrogram, otherwise we can't
+
+    // collected_query_spectra = baseline_query_spectra_ch.collect()
+    // baseline_query_spectra_ch.view()
+    // baseline_query_spectra_ch = Channel.empty()
+    
+    // Logic to spoof outputs if no query spectra are present after merging
+    collected = baseline_query_spectra_ch.collect()
+    new_collected = collected.ifEmpty(file("No_Query_Spectra")) 
+    collected_enriched_results_db_ch = enriched_results_db_ch.collect()
+    enriched_results = collected_enriched_results_db_ch.ifEmpty(file("No_Enriched_Results"))
+
+    // new_collected.view()
+    // metadata_file_ch.view()
+    // enriched_results.view()
+    
+    createDendrogram(new_collected, metadata_file_ch, enriched_results)
+
 
 }

@@ -7,7 +7,7 @@ import json
 import numpy as np
 from massql import msql_fileloading
 from pyteomics import mzxml, mzml
-from psims.mzml.writer import MzMLWriter
+from utils import write_spectra_df_to_mzML
 from tqdm import tqdm
 import glob
 import logging
@@ -147,34 +147,7 @@ def main():
 
         # Writing an mzML file with the merged spectra
         output_filename = os.path.join(args.output_folder, os.path.basename(input_filename))
-        with MzMLWriter(open(output_filename, 'wb'), close=True) as out:
-            # Add default controlled vocabularies
-            out.controlled_vocabularies()
-            # Open the run and spectrum list sections
-            with out.run(id="my_analysis"):
-                spectrum_count = len(spectra_binned_df)
-
-                spectrum_list = spectra_binned_df.to_dict(orient="records")
-
-                with out.spectrum_list(count=spectrum_count):
-                    scan = 1
-                    for spectrum_dict in spectrum_list:
-
-                        all_keys = list(spectrum_dict.keys())
-
-                        mz_array = [float(key.replace("BIN_", "")) * bin_size for key in all_keys if key.startswith("BIN_") if spectrum_dict[key] > 0]
-                        intensity_array = [spectrum_dict[key] for key in all_keys if key.startswith("BIN_") if spectrum_dict[key] > 0]
-
-                        # Write scan
-                        out.write_spectrum(
-                            mz_array, intensity_array,
-                            id="scan={}".format(scan), params=[
-                                "MS1 Spectrum",
-                                {"ms level": 1},
-                                {"total ion current": sum(intensity_array)}
-                            ])
-                        
-                        scan += 1
+        write_spectra_df_to_mzML(output_filename, spectra_binned_df, bin_size)
 
     # Output the number of replicates to a file
     output_filename = os.path.join("bin_counts", "replicates.csv")

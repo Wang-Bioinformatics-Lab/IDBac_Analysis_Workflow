@@ -5,8 +5,11 @@ from tqdm import tqdm
 
 from massql import msql_fileloading
 from pyteomics import mzxml, mzml
+from psims.mzml.writer import MzMLWriter
 
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
+
+from pathlib import Path
 
 def load_data(input_filename):
     """
@@ -194,3 +197,45 @@ def load_metadata_file(metadata_path:str):
         raise ValueError(f'Metadata file must be a CSV, XLSX, XLS, or TSV file, but got {metadata_path} instead.')
     
     return metadata_df
+
+def write_spectra_df_to_mzML(output_filename:str, spectra_binned_df:pd.DataFrame, bin_size):
+    """The function writes a dataframe of binned spectra to an mzML file.
+
+    Args:
+    output_filename: str, path to the output mzML file
+    spectra_binned_df: pd.DataFrame, binned MS1 data
+    bin_size: float, size of the bin
+
+    Returns:
+    None
+    """
+    output_filename = Path(output_filename)
+    output_filename.parent.mkdir(parents=True, exist_ok=True)
+    with MzMLWriter(open(output_filename, 'wb'), close=True) as out:
+            # Add default controlled vocabularies
+            out.controlled_vocabularies()
+            # Open the run and spectrum list sections
+            with out.run(id="my_analysis"):
+                spectrum_count = len(spectra_binned_df)
+
+                spectrum_list = spectra_binned_df.to_dict(orient="records")
+
+                with out.spectrum_list(count=spectrum_count):
+                    scan = 1
+                    for spectrum_dict in spectrum_list:
+
+                        all_keys = list(spectrum_dict.keys())
+
+                        mz_array = [float(key.replace("BIN_", "")) * bin_size for key in all_keys if key.startswith("BIN_") if spectrum_dict[key] > 0]
+                        intensity_array = [spectrum_dict[key] for key in all_keys if key.startswith("BIN_") if spectrum_dict[key] > 0]
+
+                        # Write scan
+                        out.write_spectrum(
+                            mz_array, intensity_array,
+                            id="scan={}".format(scan), params=[
+                                "MS1 Spectrum",
+                                {"ms level": 1},
+                                {"total ion current": sum(intensity_array)}
+                            ])
+                        
+                        scan += 1
