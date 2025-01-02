@@ -12,32 +12,6 @@ import logging
 from tqdm import tqdm
 import glob
 
-
-def _load_metadata(input_filename):
-    input_df = None
-
-    # look at extension
-    if input_filename.endswith(".tsv"):
-        input_df = pd.read_csv(input_filename, sep="\t")
-    elif input_filename.endswith(".csv"):
-        input_df = pd.read_csv(input_filename, sep=",")
-    elif input_filename.endswith(".xlsx"):
-        input_df = pd.read_excel(input_filename, sheet_name=None)
-        if "Metadata sheet" in input_df:
-            input_df = input_df["Metadata sheet"]
-        else:
-            input_df = input_df[list(input_df.keys())[0]]
-    elif input_filename.endswith(".xls"):
-        input_df = pd.read_excel(input_filename, sheet_name=None)
-        if "Metadata sheet" in input_df:
-            input_df = input_df["Metadata sheet"]
-        else:
-            input_df = input_df[list(input_df.keys())[0]]
-    else:
-        input_df = pd.read_csv(input_filename, sep=None)
-
-    return input_df
-
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
@@ -164,10 +138,6 @@ def main():
     # Saving the output data to create the dendrograms
     output_numerical_spectra_filename = os.path.join(args.output_histogram_data_directory, "numerical_spectra.npy")
     output_labels_spectra_filename = os.path.join(args.output_histogram_data_directory, "labels_spectra.tsv")
-
-    # Saving out the metadata
-    if metadata_df is not None:
-        metadata_df.to_csv(os.path.join(args.output_histogram_data_directory, "metadata.tsv"), sep="\t", index=False)
 
     # Saving the data
     with open(output_numerical_spectra_filename, "wb") as output_file:

@@ -159,6 +159,7 @@ def load_metadata_file(metadata_path:str):
     Raises:
     ValueError: if the metadata file is not a CSV, XLSX, XLS, or TSV file
     """
+    metadata_path = str(metadata_path)
     if metadata_path.endswith('.csv'):
         metadata_df = pd.read_csv(metadata_path)
     elif metadata_path.endswith('.xlsx'):
