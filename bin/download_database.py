@@ -7,8 +7,8 @@ import json
 
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('output_library_json')
-
+    parser.add_argument('--output_library_json', required=True)
+    parser.add_argument('--download_bin_size', type=int, required=True)
     args = parser.parse_args()
 
     # Let's read the spectra from idbac kb
@@ -29,11 +29,13 @@ def main():
         url = "https://idbac.org/api/spectrum/filtered"
         params = {}
         params["database_id"] = database_id
+        params["bin_width"] = str(args.download_bin_size)
 
         try:
             r = requests.get(url, params=params)
+            # Print formatted URL with params
+            print(r.url)
 
-            # raise for status
             r.raise_for_status()
 
             spectrum_dict = r.json()

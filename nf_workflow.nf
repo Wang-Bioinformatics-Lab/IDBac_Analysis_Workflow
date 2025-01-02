@@ -254,6 +254,7 @@ process createDendrogram {
         output_histogram_data_directory \
         --merge_replicates ${params.merge_replicates} \
         --distance ${params.distance} \
+        --bin_size ${params.search_bin_size} \
         --metadata_column "${params.metadata_column}" \
         --mass_range_lower ${params.database_search_mass_range_lower} \
         --mass_range_upper ${params.database_search_mass_range_upper} \
@@ -284,8 +285,8 @@ process downloadDatabase {
     file 'idbac_database.json'
 
     """
-    python $TOOL_FOLDER/download_database.py \
-    idbac_database.json
+    python $TOOL_FOLDER/download_database.py --output_library_json idbac_database.json \
+                                             --download_bin_size ${params.search_bin_size}
     """
 }
 
