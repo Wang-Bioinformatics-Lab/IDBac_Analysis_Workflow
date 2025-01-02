@@ -60,11 +60,11 @@ parameterlist:
       formvalue: "cosine"
       options:
         - value: "presence"
-          display: "presence"
+          display: "Presence"
         - value: "cosine"
-          display: "cosine"
+          display: "Cosine"
         - value: "euclidean"
-          display: "euclidean"
+          display: "Euclidean"
 
     - displayname: Similarity Calculation Bin Size (Da)
       paramtype: select

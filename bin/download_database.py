@@ -33,6 +33,8 @@ def main():
 
         try:
             r = requests.get(url, params=params)
+            # Print formatted URL with params
+            print(r.url)
 
             r.raise_for_status()
 
