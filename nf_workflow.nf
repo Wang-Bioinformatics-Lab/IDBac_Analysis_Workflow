@@ -200,6 +200,24 @@ process summarizeSmallMolecule {
 
 }
 
+process formatMetadata {
+    publishDir "./nf_output", mode: 'copy'
+
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    input:
+    file metadata_file
+
+    output:
+    file 'output_histogram_data_directory'
+
+    """
+    python $TOOL_FOLDER/format_metadata.py \
+    --output_histogram_data_directory "output_histogram_data_directory" \
+    --metadata_path ${metadata_file} \
+    """
+}
+
 process createDendrogram {
     publishDir "./nf_output", mode: 'copy'
 
@@ -411,6 +429,9 @@ workflow {
     // Enriching database search results
     db_summary = downloadDatabaseSummary()
     enriched_results_db_ch = enrichDatabaseSearch(search_results_ch, db_summary)
+
+    // Format the metadata
+    formatted_metadata_ch = formatMetadata(metadata_file_ch)
 
     // Creating Spectra Dendrogram
     if (params.input_metadata_file != "") {

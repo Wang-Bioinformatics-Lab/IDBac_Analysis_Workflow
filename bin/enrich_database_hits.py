@@ -34,7 +34,9 @@ def main():
                 raise Exception(f"Expected one entry for database_id {result_db_id}, got {len(this_db_entry)}")
             this_db_entry = this_db_entry.iloc[0]
 
-            result_obj["db_taxonomy"] = this_db_entry["FullTaxonomy"]
+            delimited_taxonomy = this_db_entry["family"] + ";" + this_db_entry["genus"] + ";" + this_db_entry["species"]
+
+            result_obj["db_taxonomy"] = delimited_taxonomy
 
         except Exception as e:
             print(e)
