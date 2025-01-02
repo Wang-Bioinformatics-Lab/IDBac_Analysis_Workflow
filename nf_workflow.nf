@@ -284,8 +284,8 @@ process downloadDatabase {
     file 'idbac_database.json'
 
     """
-    python $TOOL_FOLDER/download_database.py \
-    idbac_database.json
+    python $TOOL_FOLDER/download_database.py --output_library_json idbac_database.json \
+                                             --download_bin_size ${params.search_bin_size}
     """
 }
 
