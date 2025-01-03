@@ -209,7 +209,7 @@ process formatMetadata {
     file metadata_file
 
     output:
-    file 'output_histogram_data_directory'
+    file 'output_histogram_data_directory/metadata.tsv'
 
     """
     python $TOOL_FOLDER/format_metadata.py \
