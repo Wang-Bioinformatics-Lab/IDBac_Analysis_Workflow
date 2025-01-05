@@ -214,7 +214,7 @@ process formatMetadata {
     """
     python $TOOL_FOLDER/format_metadata.py \
     --output_histogram_data_directory "output_histogram_data_directory" \
-    --metadata_path ${metadata_file} \
+    --metadata_path ${metadata_file}
     """
 }
 
