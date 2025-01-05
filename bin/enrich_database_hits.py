@@ -34,7 +34,11 @@ def main():
                 raise Exception(f"Expected one entry for database_id {result_db_id}, got {len(this_db_entry)}")
             this_db_entry = this_db_entry.iloc[0]
 
-            delimited_taxonomy = this_db_entry["family"] + ";" + this_db_entry["genus"] + ";" + this_db_entry["species"]
+            genus = this_db_entry["genus"]
+            if genus == None:
+                genus = this_db_entry["16S Taxonomy"]
+
+            delimited_taxonomy = this_db_entry["family"] + ";" + genus + ";" + this_db_entry["species"]
 
             result_obj["db_taxonomy"] = delimited_taxonomy
 
