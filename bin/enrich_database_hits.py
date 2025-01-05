@@ -34,11 +34,19 @@ def main():
                 raise Exception(f"Expected one entry for database_id {result_db_id}, got {len(this_db_entry)}")
             this_db_entry = this_db_entry.iloc[0]
 
-            genus = this_db_entry["genus"]
-            if genus == None:
-                genus = this_db_entry["16S Taxonomy"]
-
+            family  = this_db_entry["family"]
+            genus   = this_db_entry["genus"]
+            species = this_db_entry["species"]
+            
+            all_none = (family == None and genus == None and species == None)
             delimited_taxonomy = this_db_entry["family"] + ";" + genus + ";" + this_db_entry["species"]
+            if all_none:
+                if this_db_entry["16S Taxonomy"] != None:
+                    delimited_taxonomy = f"{str(this_db_entry["16S Taxonomy"]).strip()} (User Submitted 16S)"
+                else:
+                    delimited_taxonomy = ""
+
+            
 
             result_obj["db_taxonomy"] = delimited_taxonomy
 
