@@ -1,6 +1,7 @@
 
 import argparse
 import pandas as pd
+import sys
 
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -37,12 +38,19 @@ def main():
             family  = this_db_entry["family"]
             genus   = this_db_entry["genus"]
             species = this_db_entry["species"]
-            
-            all_none = (family == None and genus == None and species == None)
-            delimited_taxonomy = this_db_entry["family"] + ";" + genus + ";" + this_db_entry["species"]
+            if family is None:
+                family = ""
+            if genus is None:
+                genus = ""
+            if species is None:
+                species = ""
+        
+            delimited_taxonomy = family + ";" + genus + ";" + species
+
+            all_none = ((family is "") and (genus is "") and (species is ""))
             if all_none:
-                if this_db_entry["16S Taxonomy"] != None:
-                    delimited_taxonomy = f"{str(this_db_entry["16S Taxonomy"]).strip()} (User Submitted 16S)"
+                if this_db_entry["16S Taxonomy"] is not None:
+                    delimited_taxonomy = f"{str(this_db_entry['16S Taxonomy']).strip()} (User Submitted 16S)"
                 else:
                     delimited_taxonomy = ""
 
@@ -51,7 +59,7 @@ def main():
             result_obj["db_taxonomy"] = delimited_taxonomy
 
         except Exception as e:
-            print(e)
+            print(e, file=sys.stderr, flush=True)
 
     # outputting
     if len(results_list) == 0:  # Spoof a result so we show an empty table

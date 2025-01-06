@@ -235,7 +235,8 @@ process createDendrogram {
     file 'with_metadata.html' optional true
     file 'with_database.html' optional true
     file "output_distance_table.tsv" optional true
-    file "output_histogram_data_directory"  optional true
+    file "output_histogram_data_directory/labels_spectra.tsv"  optional true
+    file "output_histogram_data_directory/numerical_spectra.npy"  optional true
 
     script:
     
