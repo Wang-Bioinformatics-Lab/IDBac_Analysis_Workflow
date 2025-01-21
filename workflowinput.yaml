@@ -82,7 +82,7 @@ parameterlist:
       paramtype: text
       nf_paramname: database_search_mass_range_lower
       formplaceholder: Enter the Database Search Mass Range
-      formvalue: "2000"
+      formvalue: "3000"
       tooltip: "The lower bound of m/z values when comparing protein spectra to the database."
 
     - displayname: Protein Database Search Mass Range Upper Bound
