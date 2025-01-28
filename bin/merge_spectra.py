@@ -86,7 +86,6 @@ def main():
     all_input_files.sort()
 
     all_spectra_df_list = []
-
     replicate_list = []
     bin_counts_list = []
 
@@ -144,10 +143,22 @@ def main():
             # Now lets get the mean for each bin
             spectra_binned_df = spectra_binned_df.drop("scan", axis=1).groupby("filename").mean().reset_index()
             spectra_binned_df["scan"] = "merged"
+            all_spectra_df_list.append(spectra_binned_df)
 
         # Writing an mzML file with the merged spectra
         output_filename = os.path.join(args.output_folder, os.path.basename(input_filename))
         write_spectra_df_to_mzML(output_filename, spectra_binned_df, bin_size)
+
+    # Output the binned spectra to a file if replicates are merged
+    if len(all_spectra_df_list) > 0:
+        logging.debug("Saving binned spectra to binned_spectra.csv")
+        output_filename = os.path.join("bin_counts", "binned_spectra.csv")
+        os.makedirs(os.path.dirname(output_filename), exist_ok=True)
+        df = pd.concat(all_spectra_df_list)
+        df.to_csv(output_filename)
+    else:
+        logging.debug("No binned spectra to save")
+
 
     # Output the number of replicates to a file
     output_filename = os.path.join("bin_counts", "replicates.csv")
