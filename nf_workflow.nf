@@ -103,6 +103,7 @@ process mergeInputSpectra {
     file 'merge_parameters.txt'
     file 'bin_counts/bin_counts.csv' optional true   // Only outputs if it's merged
     file 'bin_counts/replicates.csv' optional true
+    file 'bin_counts/binned_spectra.csv' optional true
 
     """
     mkdir merged
