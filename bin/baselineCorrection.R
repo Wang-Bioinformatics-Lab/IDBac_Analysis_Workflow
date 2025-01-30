@@ -30,7 +30,7 @@ process_mzML_file <- function(input_file, output_file) {
   spectra_baseline_corrected <- removeBaseline(spectra, method="TopHat")
 
   # Perform peak detection
-  peaks <- detectPeaks(spectra_baseline_correctedm
+  peaks <- detectPeaks(spectra_baseline_corrected,
                       method='MAD',
                       halfWindowSize=20L,
                       minSNR=3,)
