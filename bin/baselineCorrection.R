@@ -33,7 +33,7 @@ process_mzML_file <- function(input_file, output_file) {
   peaks <- detectPeaks(spectra_baseline_corrected,
                       method='MAD',
                       halfWindowSize=20L,
-                      SNR=3)
+                      SNR=4)   # For reference consistency, rather than codebase
 
   # Export the processed spectra as an mzML file
   exportMzMl(peaks, output_file)
