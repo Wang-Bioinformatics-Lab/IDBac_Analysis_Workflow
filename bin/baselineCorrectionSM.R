@@ -19,9 +19,6 @@ process_mzML_file <- function(input_file, output_file) {
     return()
   }
 
-
-  spectra <- transformIntensity(spectra, method="sqrt")
-
   spectra <- MALDIquant::smoothIntensity(spectra,
                                          method = 'SavitzkyGolay',
                                          halfWindowSize = 20L)
@@ -31,9 +28,9 @@ process_mzML_file <- function(input_file, output_file) {
 
   # Perform peak detection
   peaks <- detectPeaks(spectra_baseline_correctedm
-                      method='MAD',
+                      method='SuperSmoother',
                       halfWindowSize=20L,
-                      minSNR=3,)
+                      minSNR=1,)
 
   # Export the processed spectra as an mzML file
   exportMzMl(peaks, output_file)

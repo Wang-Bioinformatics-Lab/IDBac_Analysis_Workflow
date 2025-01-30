@@ -139,7 +139,7 @@ process baselineCorrectionSmallMolecule {
 
     """
     mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file "baselinecorrected/${input_file.fileName}"
+    Rscript $TOOL_FOLDER/baselineCorrectionSM.R $input_file "baselinecorrected/${input_file.fileName}"
     """
 }
 
@@ -153,7 +153,7 @@ process baselineCorrectionBlank {
     file 'baselinecorrected/*.mzML'
     """
     mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file baselinecorrected/$input_file
+    Rscript $TOOL_FOLDER/baselineCorrectionSM.R $input_file baselinecorrected/$input_file
     """
 }
 
