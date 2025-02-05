@@ -3,7 +3,18 @@ import os
 import argparse
 import requests
 import json
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
+@retry(
+    stop=stop_after_attempt(3),  # Retry up to 3 times
+    wait=wait_exponential(multiplier=1, min=2, max=10),  # Exponential backoff (2s, 4s, 8s)
+    retry=retry_if_exception_type(requests.exceptions.RequestException),  # Retry on request errors
+)
+def get_with_retries(url, params=None):
+    """Fetch data from the given URL with retries."""
+    r = requests.get(url, params=params)
+    r.raise_for_status()  # Raise exception for HTTP errors (4xx, 5xx)
+    return r
 
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -14,8 +25,7 @@ def main():
     # Let's read the spectra from idbac kb
     url = "https://idbac.org/api/spectra"
 
-    r = requests.get(url)
-    all_spectra_list = r.json()
+    all_spectra_list = get_with_retries(url).json()
 
 
     # Now we'll iterate and get each individual spectrum
@@ -31,17 +41,14 @@ def main():
         params["database_id"] = database_id
         params["bin_width"] = str(args.download_bin_size)
 
-        try:
-            r = requests.get(url, params=params)
-            # Print formatted URL with params
-            print(r.url)
+        r = get_with_retries(url, params=params)
+        # Print formatted URL with params
+        print(r.url)
 
-            r.raise_for_status()
+        r.raise_for_status()
 
-            spectrum_dict = r.json()
-            spectrum_dict["database_id"] = database_id
-        except:
-            continue
+        spectrum_dict = r.json()
+        spectrum_dict["database_id"] = database_id
 
         # add to json list
         output_spectra_list.append(spectrum_dict)
