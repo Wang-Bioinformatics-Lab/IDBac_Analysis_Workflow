@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 params.input_spectra_folder = ""
 params.input_small_molecule_folder = ""
 params.input_media_control_folder = ""
-params.input_metadata_file = ""
+params.input_metadata_file = "NO_FILE"
 
 params.merge_replicates = "Yes"
 params.distance = "presence"
@@ -391,9 +391,11 @@ workflow {
         blank_channel = Channel.fromPath(params.input_media_control_folder + "/*.mzML")
         pre_flight_ch = pre_flight_ch.concat(blank_channel)
     }
-    if (params.input_metadata_file != "") {
+    if (params.input_metadata_file != "NO_FILE") {
         metadata_file_ch = Channel.fromPath(params.input_metadata_file)
         metadataValidation(metadata_file_ch)
+    } else {
+        metadata_file_ch = channel.empty()
     }
 
     preFlightFailures = preFlightCheck(pre_flight_ch)
