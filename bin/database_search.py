@@ -232,19 +232,29 @@ def main():
                 query_index = i
                 database_index = j
                 distance = item
-                is_seed = False
-                if database_index in seed_genera_indices or \
-                    database_index in seed_species_indices:
-                    is_seed = True
+               
+                if len(seed_genera_indices) == 0 and len(seed_species_indices) == 0:
+                    if distance < args.score_threshold:
+                        result_dict = {}
+                        result_dict["query_index"] = query_index
+                        result_dict["database_index"] = database_index
+                        result_dict["distance"] = distance
+                        result_dict["query_filename"] = os.path.basename(input_filename)
 
-                if distance < args.score_threshold or is_seed:
-                    result_dict = {}
-                    result_dict["query_index"] = query_index
-                    result_dict["database_index"] = database_index
-                    result_dict["distance"] = distance
-                    result_dict["query_filename"] = os.path.basename(input_filename)
+                        output_results_list.append(result_dict)
+                else:
+                    is_seed = False
+                    if database_index in seed_genera_indices or \
+                        database_index in seed_species_indices:
+                        is_seed = True
+                    if is_seed:
+                        result_dict = {}
+                        result_dict["query_index"] = query_index
+                        result_dict["database_index"] = database_index
+                        result_dict["distance"] = distance
+                        result_dict["query_filename"] = os.path.basename(input_filename)
 
-                    output_results_list.append(result_dict)
+                        output_results_list.append(result_dict)
                     
         # We will also need a complete distance_matrix for the query-db pairs (in contrast to the above on that's trimmed by the score_threshold)
         complete_output_results_list = []
