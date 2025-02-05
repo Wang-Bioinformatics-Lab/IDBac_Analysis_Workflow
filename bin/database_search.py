@@ -33,6 +33,8 @@ def load_database(database_filtered_json, mz_min, mz_max, bin_size):
     for spectrum in all_database_spectra:
         formatted_spectrum = {}
         formatted_spectrum["database_id"] = spectrum["database_id"]
+        formatted_spectrum["genus"] = spectrum["genus"]
+        formatted_spectrum["species"] = spectrum["species"]
 
         for peak in spectrum["peaks"]:
             if peak["mz"] < mz_min or peak["mz"] > mz_max:
@@ -44,6 +46,7 @@ def load_database(database_filtered_json, mz_min, mz_max, bin_size):
     return pd.DataFrame(formatted_database_spectra)
 
 def compute_db_db_distance(database_df, db_numerical_columns, output_path, distance_metric="cosine"):
+
     """ This function computes the pairwise distance between the the database results in the first 
     argument, and themselves. This is used to fill out the remainder of the distance matrix.
     
@@ -121,6 +124,9 @@ def main():
     parser.add_argument('--bin_size', type=float, help="Size of the spectra bins for distance calculations.", required=True)
     parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value to consider for binning.")
     parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value to consider for binning.")
+    # I actually don't know how the checkbox form input works, so this is a placeholder for now TODO, Potential BUG
+    parser.add_argument('--seed_genera', default='', help="Comma separated list of genera to seed the search with.")
+    parser.add_argument('--seed_species', default='', help="Comma separated list of species to seed the search with.")
     parser.add_argument('--debug', action='store_true')
     
     args = parser.parse_args()
@@ -145,6 +151,24 @@ def main():
 
     # Prepping database for matching
     db_numerical_columns = [x for x in database_df.columns if x.startswith("BIN_")]
+    db_metadata = [x for x in database_df.columns if x not in db_numerical_columns]
+    for required_col in ['genus', 'species', 'database_id']:
+        if required_col not in database_df.columns:
+            raise ValueError("Database metadata does not contain required column: {}".format(required_col))
+    db_metadata = database_df.loc[:, db_metadata]
+
+    # Get the index of selected genera and species seeds
+    db_metadata.reset_index(inplace=True)   # Reset index to ensure contiguous numbering
+    if args.seed_genera:
+        seed_genera = args.seed_genera.split(",")
+        seed_genera_indices = db_metadata[db_metadata["genus"].isin(seed_genera)].index
+    else:
+        seed_genera_indices = []
+    if args.seed_species:
+        seed_species = args.seed_species.split(",")
+        seed_species_indices = db_metadata[db_metadata["species"].isin(seed_species)].index
+    else:
+        seed_species_indices = []
 
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
 
@@ -203,14 +227,17 @@ def main():
         # Now lets do pairwise cosine distance
         distance_matrix = compute_distances_binned(query_data_np, database_data_np, distance_metric=args.distance)
 
-        #print(distance_matrix)
         for i, row in enumerate(distance_matrix):
             for j, item in enumerate(row):
                 query_index = i
                 database_index = j
                 distance = item
+                is_seed = False
+                if database_index in seed_genera_indices or \
+                    database_index in seed_species_indices:
+                    is_seed = True
 
-                if distance < args.score_threshold:
+                if distance < args.score_threshold or is_seed:
                     result_dict = {}
                     result_dict["query_index"] = query_index
                     result_dict["database_index"] = database_index

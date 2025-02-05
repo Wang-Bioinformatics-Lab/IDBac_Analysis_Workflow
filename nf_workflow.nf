@@ -13,6 +13,9 @@ params.database_search_mass_range_lower = "2000"
 params.database_search_mass_range_upper = "20000"
 params.metadata_column = "None"
 
+params.seed_genera = ""
+params.seed_species = ""
+
 params.heatmap_bin_size = 1.0   // Heatmaps use 1.0 Da bins by default
 params.search_bin_size  = 10.0  // Database search uses 10.0 Da bins by default
 
@@ -322,6 +325,8 @@ process databaseSearch {
     --mass_range_upper ${params.database_search_mass_range_upper} \
     --distance ${params.distance} \
     --bin_size ${params.search_bin_size} \
+    --seed_genera "${params.seed_genera}" \
+    --seed_species "${params.seed_species}" \
     $params.debug_flag \
     """
 }

@@ -13,6 +13,10 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 def get_with_retries(url, params=None):
     """Fetch data from the given URL with retries."""
     r = requests.get(url, params=params)
+    if r.status_code == 404:
+        print(f"404 error for {r.url}")
+        return None
+
     r.raise_for_status()  # Raise exception for HTTP errors (4xx, 5xx)
     return r
 
@@ -42,13 +46,14 @@ def main():
         params["bin_width"] = str(args.download_bin_size)
 
         r = get_with_retries(url, params=params)
-        # Print formatted URL with params
-        print(r.url)
-
-        r.raise_for_status()
+        if r is None:
+            print(f"Skipping {database_id}")
+            continue
 
         spectrum_dict = r.json()
         spectrum_dict["database_id"] = database_id
+        spectrum_dict["genus"] = spectrum["genus"]
+        spectrum_dict["species"] = spectrum["species"]
 
         # add to json list
         output_spectra_list.append(spectrum_dict)

@@ -1,7 +1,7 @@
 workflowname: idbac_analysis_workflow
 workflowdescription: idbac_analysis_workflow
 workflowlongdescription: This is a idbac analysis nextflow workflow for GNPS2
-workflowversion: "2025.01.05.00"
+workflowversion: "2025.02.05.00"
 workflowfile: nf_workflow.nf
 workflowautohide: false
 adminonly: false
@@ -98,3 +98,30 @@ parameterlist:
       formplaceholder: Enter the Database Search Distance Threshold
       formvalue: "0.5"
       tooltip: "The maximumum distance threshold for a protein to be considered a match to the database."
+
+    - displayname: Seed Genera
+      paramtype: select # select_checkbox # <-- should be used when a dropdown is implemented
+      nf_paramname: seed_genera
+      tooltip: "These genera will be included in search results regardless of similarity."
+      formvalue: ''
+      options:
+        - value: None
+          display: ''
+      options-from-url:
+        url: https://idbac.org/analysis-utils/get_genus_options
+        value-key: "value-key"
+        display-key: "display-key"
+
+    - displayname: Seed Species
+      paramtype: select # select_checkbox # <-- should be used when a dropdown is implemented
+      nf_paramname: seed_species
+      tooltip: "These species will be included in search results regardless of similarity."
+      formvalue: ''
+      options:
+        - value: None
+          display: ''
+      options-from-url:
+        url: https://idbac.org/analysis-utils/get_species_options
+        value-key: "value-key"
+        display-key: "display-key"
+
