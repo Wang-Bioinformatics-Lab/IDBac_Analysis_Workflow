@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python=3.9
   - openpyxl
+  - tenacity
   - pip:
     - pandas==2.2.3
     - massql==0.0.15
