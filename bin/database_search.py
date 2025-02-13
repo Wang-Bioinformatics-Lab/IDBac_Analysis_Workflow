@@ -160,12 +160,12 @@ def main():
     # Get the index of selected genera and species seeds
     db_metadata.reset_index(inplace=True)   # Reset index to ensure contiguous numbering
     if args.seed_genera:
-        seed_genera = args.seed_genera.split(",")
+        seed_genera = args.seed_genera.split(";")
         seed_genera_indices = db_metadata[db_metadata["genus"].isin(seed_genera)].index
     else:
         seed_genera_indices = []
     if args.seed_species:
-        seed_species = args.seed_species.split(",")
+        seed_species = args.seed_species.split(";")
         seed_species_indices = db_metadata[db_metadata["species"].isin(seed_species)].index
     else:
         seed_species_indices = []
