@@ -16,7 +16,7 @@ params.metadata_column = "None"
 params.seed_genera = ""
 params.seed_species = ""
 
-params.heatmap_bin_size = 1.0   // Heatmaps use 1.0 Da bins by default
+params.heatmap_bin_size = 10.0   // Heatmaps use 1.0 Da bins by default
 params.search_bin_size  = 10.0  // Database search uses 10.0 Da bins by default
 
 params.debug_flag = "" // Should be set to either "--debug" or ""

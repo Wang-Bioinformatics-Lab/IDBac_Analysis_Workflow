@@ -109,35 +109,35 @@ Views:
         filename: nf_output/search/enriched_db_results.tsv
         error_missingfile: "No File"
         columns:
-            -   title: "View"
-                data: None
-            -   title: "query_filename"
+            # -   title: "View"
+                # data: None
+            -   title: "Query Filename"
                 data: "query_filename"
-            -   title: "query_index"
-                data: "query_index"
-            -   title: "database_id"
-                data: "database_id"
-            -   title: "database_scan"
-                data: "database_scan"
-            -   title: "db_strain_name"
+            # -   title: "query_index"
+                # data: "query_index"
+            # -   title: "database_id"
+                # data: "database_id"
+            # -   title: "database_scan"
+                # data: "database_scan"
+            -   title: "Database Strain Name"
                 data: "db_strain_name"
-            -   title: "db_culture_collection"
+            -   title: "Database Culture Collection"
                 data: "db_culture_collection"
-            -   title: "db_taxonomy"
+            -   title: "Database Taxonomy"
                 data: "db_taxonomy"
-            -   title: "distance"
+            -   title: "Distance"
                 data: "distance"
-        columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
-        return `
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1">View Query - Resolver </a>
-            <br>
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Database - Resolver </a>
-            <br>
-            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Mirror - Resolver</a>
-            <br>
-            <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1">View Query - Local</a>
-            <br>
-            <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Database - Local</a>
-            <br>
-            <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Mirror - Local</a>
-        `;}}]'
+        # columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
+        # return `
+        #     <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1">View Query - Resolver </a>
+        #     <br>
+        #     <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Database - Resolver </a>
+        #     <br>
+        #     <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Mirror - Resolver</a>
+        #     <br>
+        #     <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1">View Query - Local</a>
+        #     <br>
+        #     <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Database - Local</a>
+        #     <br>
+        #     <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Mirror - Local</a>
+        # `;}}]'
