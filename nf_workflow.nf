@@ -30,6 +30,9 @@ TOOL_FOLDER = "$baseDir/bin"
 process preFlightCheck {
     conda "$TOOL_FOLDER/conda_env.yml"
 
+    cpus 2
+    memory '8 GB'
+
     input:
     each file(input_file )
 
@@ -46,6 +49,9 @@ process preFlightCheck {
 process metadataValidation {
     conda "$TOOL_FOLDER/conda_env.yml"
 
+    cpus 2
+    memory '8 GB'
+
     input:
     file metadata_file
 
@@ -57,6 +63,9 @@ process metadataValidation {
 // This process outputs all of the errors from preFlightCheck to nf_output
 process outputErrors {
     publishDir "./nf_output", mode: 'copy'
+
+    cpus 2
+    memory '8 GB'
 
     input:
     path input_files, stageAs: 'input_files/errors_*.csv'
@@ -74,6 +83,9 @@ process baselineCorrection {
     publishDir "./nf_output", mode: 'copy'
 
     conda "$TOOL_FOLDER/conda_maldiquant.yml"
+
+    cpus 2
+    memory '20 GB'
 
     errorStrategy 'ignore'
 
@@ -95,6 +107,9 @@ process mergeInputSpectra {
     publishDir "./nf_output", mode: 'copy', pattern: "merged/*.mzML"
     publishDir "./nf_output", mode: 'copy', pattern: "merge_parameters.txt"
     publishDir "./nf_output", mode: 'copy', pattern: "bin_counts/*"
+
+    cpus 2
+    memory '16 GB'
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
@@ -130,6 +145,9 @@ process mergeInputSpectra {
 process baselineCorrectionSmallMolecule {
     publishDir "./nf_output/small_molecule/baseline_corrected", mode: 'copy'
 
+    cpus 2
+    memory '20 GB'
+
     conda "$TOOL_FOLDER/conda_maldiquant.yml"
 
     errorStrategy 'ignore'
@@ -149,9 +167,15 @@ process baselineCorrectionSmallMolecule {
 process baselineCorrectionBlank {
     publishDir "./nf_output/small_molecule/baseline_corrected_blank", mode: 'copy'
     conda "$TOOL_FOLDER/conda_maldiquant.yml"
+
+    cpus 2
+    memory '20 GB'
+
     errorStrategy 'ignore'
+
     input:
     file input_file
+
     output:
     file 'baselinecorrected/*.mzML'
     """
@@ -164,6 +188,9 @@ process small_molecule_media_control {
     publishDir "./nf_output/small_molecule/media_control", mode: 'copy'
     cache true
     conda "$TOOL_FOLDER/conda_env.yml"
+
+    cpus 2
+    memory '8 GB'
 
     input:
     each small_molecule_file
@@ -188,6 +215,9 @@ process summarizeSmallMolecule {
 
     cache true
 
+    cpus 2
+    memory '8 GB'
+
     conda "$TOOL_FOLDER/conda_env.yml"
 
     input:
@@ -209,6 +239,9 @@ process formatMetadata {
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
+    cpus 2
+    memory '8 GB'
+
     input:
     file metadata_file
 
@@ -226,6 +259,9 @@ process createDendrogram {
     publishDir "./nf_output", mode: 'copy'
 
     cache true
+
+    cpus 2
+    memory '32 GB'
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
@@ -283,6 +319,9 @@ process downloadDatabase {
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
+    cpus 2
+    memory '8 GB'
+
     input:
     val x
 
@@ -297,6 +336,9 @@ process downloadDatabase {
 
 process databaseSearch {
     publishDir "./nf_output/search", mode: 'copy'
+
+    cpus 2
+    memory '20 GB'
 
     cache true
 
@@ -333,6 +375,10 @@ process databaseSearch {
 
 // Download database summary with retry up to 5 times
 process downloadDatabaseSummary {
+    
+    cpus 2
+    memory '8 GB'
+    
     output:
     file 'idbac_database_summary.json'
 
@@ -345,6 +391,9 @@ process downloadDatabaseSummary {
 
 process enrichDatabaseSearch {
     publishDir "./nf_output/search", mode: 'copy'
+
+    cpus 2
+    memory '8 GB'
 
     conda "$TOOL_FOLDER/conda_env_enrichment.yml"
 
@@ -367,6 +416,9 @@ process enrichDatabaseSearch {
 
 process summarizeSpectra{
     publishDir "./nf_output/query", mode: 'copy'
+
+    cpus 2
+    memory '20 GB'
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
