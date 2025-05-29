@@ -267,9 +267,9 @@ def main():
                                                                                bin_size)
 
     # Get the index of selected genera and species seeds.
-    seed_genera, seed_species = get_seed_indices(db_metadata,
-                                                 seed_genera=args.seed_genera,
-                                                 seed_species=args.seed_species)
+    seed_genera_indices, seed_species_indices = get_seed_indices(db_metadata,
+                                                                 seed_genera=args.seed_genera,
+                                                                 seed_species=args.seed_species)
 
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
 
