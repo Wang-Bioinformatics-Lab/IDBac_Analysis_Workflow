@@ -16,10 +16,10 @@ params.metadata_column = "None"
 params.seed_genera = ""
 params.seed_species = ""
 
-params.heatmap_bin_size = 10.0   // Heatmaps use 1.0 Da bins by default
-params.search_bin_size  = 10.0  // Database search uses 10.0 Da bins by default
+params.heatmap_bin_size = 10  // Heatmaps use 1.0 Da bins by default
+params.search_bin_size  = 10  // Database search uses 10.0 Da bins by default
 
-params.debug_flag = "" // Should be set to either "--debug" or ""
+params.debug_flag = "--debug" // Should be set to either "--debug" or ""
 
 TOOL_FOLDER = "$baseDir/bin"
 
@@ -340,7 +340,7 @@ process databaseSearch {
     cpus 2
     memory '20 GB'
 
-    cache true
+    cache false
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
@@ -389,7 +389,7 @@ process downloadDatabaseSummary {
     """
 }
 
-process enrichDatabaseSearch {
+process enrichCoreDatabaseSearch {
     publishDir "./nf_output/search", mode: 'copy'
 
     cpus 2
@@ -410,6 +410,31 @@ process enrichDatabaseSearch {
     python $TOOL_FOLDER/enrich_database_hits.py \
     $input_results \
     enriched_db_results.tsv \
+    --database_json $idbac_database_summary
+    """
+}
+
+process enrichCompleteDatabaseSearch {
+    publishDir "./nf_output/search", mode: 'copy'
+
+    cpus 2
+    memory '8 GB'
+
+    conda "$TOOL_FOLDER/conda_env_enrichment.yml"
+
+    cache false
+
+    input:
+    file input_results
+    file idbac_database_summary
+    
+    output:
+    file 'complete_enriched_db_results.tsv'
+    
+    """
+    python $TOOL_FOLDER/enrich_database_hits.py \
+    $input_results \
+    complete_enriched_db_results.tsv \
     --database_json $idbac_database_summary
     """
 }
@@ -486,11 +511,12 @@ workflow {
     (output_idbac_database_ch) = downloadDatabase(1)
 
     // Matching database to query spectra
-    (search_results_ch, output_database_mzML) = databaseSearch(output_idbac_database_ch, baseline_query_spectra_ch.collect())
+    (core_search_results_ch, db_db_distances_ch, complete_search_results_ch, output_database_mzML) = databaseSearch(output_idbac_database_ch, baseline_query_spectra_ch.collect())
 
     // Enriching database search results
     db_summary = downloadDatabaseSummary()
-    enriched_results_db_ch = enrichDatabaseSearch(search_results_ch, db_summary)
+    enriched_core_results_db_ch     = enrichCoreDatabaseSearch(core_search_results_ch, db_summary)
+    enriched_complete_results_db_ch = enrichCompleteDatabaseSearch(complete_search_results_ch, db_summary)
 
     // Format the metadata
     formatted_metadata_ch = formatMetadata(metadata_file_ch)
@@ -511,8 +537,8 @@ workflow {
     // Logic to spoof outputs if no query spectra are present after merging
     collected = baseline_query_spectra_ch.collect()
     new_collected = collected.ifEmpty(file("No_Query_Spectra")) 
-    collected_enriched_results_db_ch = enriched_results_db_ch.collect()
-    enriched_results = collected_enriched_results_db_ch.ifEmpty(file("No_Enriched_Results"))
+    enriched_core_results_db_ch = enriched_core_results_db_ch.collect()
+    enriched_results = enriched_core_results_db_ch.ifEmpty(file("No_Enriched_Results"))
 
     // new_collected.view()
     // metadata_file_ch.view()

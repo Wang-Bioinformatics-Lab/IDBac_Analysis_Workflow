@@ -10,7 +10,7 @@ from functools import lru_cache
 import numpy as np
 import logging
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
-
+from collections import defaultdict
 from utils import load_data, spectrum_binner, compute_distances_binned, write_spectra_df_to_mzML
 
 # Create an LRU Cache from functools
@@ -179,6 +179,8 @@ def parse_args():
         '--debug',
         action='store_true'
         )
+    return parser.parse_args()
+
 
 def load_and_prepare_database(database_filtered_json, mass_range_lower, mass_range_upper, bin_size):
     """
@@ -247,35 +249,12 @@ def get_seed_indices(db_metadata, seed_genera=None, seed_species=None):
 
     return seed_genera_indices, seed_species_indices
 
-def main():
-    
-    args = parse_args()
-    
-    bin_size = float(args.bin_size)
-
-    if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-        # Log all params
-        for arg in vars(args):
-            logging.debug("%s: %s", arg, getattr(args, arg))
-    else:
-        logging.basicConfig(level=logging.INFO)
-
-    database_df, db_numerical_columns, db_metadata = load_and_prepare_database(args.database_filtered_json,
-                                                                               args.mass_range_lower,
-                                                                               args.mass_range_upper,
-                                                                               bin_size)
-
-    # Get the index of selected genera and species seeds.
-    seed_genera_indices, seed_species_indices = get_seed_indices(db_metadata,
-                                                                 seed_genera=args.seed_genera,
-                                                                 seed_species=args.seed_species)
-
-    all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
-
+def database_search(input_paths, bin_size, database_df,
+                    db_numerical_columns, seed_genera_indices, seed_species_indices, args):
     output_results_list = []
+    complete_output_results = defaultdict(list)
 
-    for input_filename in all_input_files:
+    for input_filename in input_paths:
         # Reading Query
         ms1_df, _ = load_data(input_filename)
         
@@ -284,7 +263,7 @@ def main():
                                             bin_size=bin_size,
                                             min_mz=args.mass_range_lower,
                                             max_mz=args.mass_range_upper,
-                                            merge_replicates="Yes")
+                                            merge_replicates="Yes",)
 
         output_filename = os.path.join('query_spectra',  os.path.basename(input_filename))
         write_spectra_df_to_mzML(output_filename, spectra_binned_df, bin_size)
@@ -328,20 +307,25 @@ def main():
         # Now lets do pairwise cosine distance
         distance_matrix = compute_distances_binned(query_data_np, database_data_np, distance_metric=args.distance)
 
+        assert distance_matrix.shape[0] == len(spectra_binned_df), "Distance matrix rows should match the number of queries, but got {} and {}".format(distance_matrix.shape[0], len(spectra_binned_df))
+        assert distance_matrix.shape[1] == len(spectra_binned_db_df), "Distance matrix columns should match the number of database entries, but got {} and {}".format(distance_matrix.shape[1], len(spectra_binned_db_df))
+
         for i, row in enumerate(distance_matrix):
             for j, item in enumerate(row):
                 query_index = i
                 database_index = j
                 distance = item
+
+                result_dict = {}
+                result_dict["query_index"] = query_index
+                result_dict["database_index"] = database_index
+                result_dict["distance"] = distance
+                result_dict["query_filename"] = os.path.basename(input_filename)
+        
+                complete_output_results[database_index].append(result_dict)
                
                 if len(seed_genera_indices) == 0 and len(seed_species_indices) == 0:
                     if distance < args.score_threshold:
-                        result_dict = {}
-                        result_dict["query_index"] = query_index
-                        result_dict["database_index"] = database_index
-                        result_dict["distance"] = distance
-                        result_dict["query_filename"] = os.path.basename(input_filename)
-
                         output_results_list.append(result_dict)
                 else:
                     is_seed = False
@@ -349,32 +333,49 @@ def main():
                         database_index in seed_species_indices:
                         is_seed = True
                     if is_seed:
-                        result_dict = {}
-                        result_dict["query_index"] = query_index
-                        result_dict["database_index"] = database_index
-                        result_dict["distance"] = distance
-                        result_dict["query_filename"] = os.path.basename(input_filename)
-
                         output_results_list.append(result_dict)
                     
-        # We will also need a complete distance_matrix for the query-db pairs (in contrast to the above on that's trimmed by the score_threshold)
-        complete_output_results_list = []
-        # Get columns where there is at least one match less than threshold
-        thresholded_indices = np.where(np.any(distance_matrix < args.score_threshold, axis=0))[0]
-        for i, row in enumerate(distance_matrix):
-            for j in thresholded_indices:
-                distance = row[j]
-                query_index = i
-                database_index = j
-                
-                result_dict = {}
-                result_dict["query_index"] = query_index
-                result_dict["database_index"] = database_index
-                result_dict["distance"] = distance
-                result_dict["query_filename"] = os.path.basename(input_filename)
-                
-                complete_output_results_list.append(result_dict)
-                
+    # We will also need a complete distance_matrix for the query-db pairs (in contrast to the above one that's trimmed by the score_threshold)
+    matched_db_indices = np.unique([x["database_index"] for x in output_results_list])
+
+    complete_output_results_list = []
+    for idx in matched_db_indices:
+        relevant_matches = complete_output_results[idx]
+        complete_output_results_list.extend(relevant_matches)
+
+    return output_results_list, complete_output_results_list
+
+def main():
+    
+    args = parse_args()
+    
+    bin_size = float(args.bin_size)
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+        # Log all params
+        for arg in vars(args):
+            logging.debug("%s: %s", arg, getattr(args, arg))
+    else:
+        logging.basicConfig(level=logging.INFO)
+
+    database_df, db_numerical_columns, db_metadata = load_and_prepare_database(args.database_filtered_json,
+                                                                               args.mass_range_lower,
+                                                                               args.mass_range_upper,
+                                                                               bin_size)
+
+    # Get the index of selected genera and species seeds.
+    seed_genera_indices, seed_species_indices = get_seed_indices(db_metadata,
+                                                                 seed_genera=args.seed_genera,
+                                                                 seed_species=args.seed_species)
+
+    all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
+
+    
+    output_results_list, complete_output_results_list = database_search(all_input_files, bin_size, database_df,
+                                                                 db_numerical_columns, seed_genera_indices, seed_species_indices, args)
+
+    assert len(output_results_list) <= len(complete_output_results_list), f"Output results list should be less than or equal to complete output results list but got {len(output_results_list)} and {len(complete_output_results_list)} respectively."
 
     small_database_df = database_df[["row_count", "database_id"]]
     small_database_df["database_scan"] = small_database_df["database_id"]
@@ -397,7 +398,9 @@ def main():
     output_results_df["database_id"] = output_results_df["database_scan"]
     output_results_df["database_scan"] = output_results_df["row_count"] + 1
     complete_output_results_df = complete_output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
-    
+    complete_output_results_df["database_id"] = complete_output_results_df["database_scan"]
+    complete_output_results_df["database_scan"] = complete_output_results_df["row_count"] + 1
+
     # Sanity Check: We assume these to be unique below
     if len(database_df.database_id.unique()) != len(database_df.database_id):
         raise ValueError("Database ID is not unique")
@@ -424,6 +427,7 @@ def main():
 
     # rename columns
     output_results_df = output_results_df.rename(columns={"Strain name": "db_strain_name", "Culture Collection": "db_culture_collection", "Sample name": "db_sample_name", "Genbank accession": "db_genbank_accession"})
+    complete_output_results_df = complete_output_results_df.rename(columns={"Strain name": "db_strain_name", "Culture Collection": "db_culture_collection", "Sample name": "db_sample_name", "Genbank accession": "db_genbank_accession"})
 
     # Output data
     output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
