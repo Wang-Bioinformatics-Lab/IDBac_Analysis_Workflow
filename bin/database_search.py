@@ -217,12 +217,12 @@ def load_and_prepare_database(database_filtered_json, mass_range_lower, mass_ran
 
     return database_df, db_numerical_columns, db_metadata
 
-def get_seed_indices(database_df, seed_genera=None, seed_species=None):
+def get_seed_indices(db_metadata, seed_genera=None, seed_species=None):
     """
     Get the indices of the database entries that match the seed genera and species.
     
     Args:
-    database_df: pd.DataFrame
+    db_metadata: pd.DataFrame
         DataFrame containing the database spectra.
     seed_genera: str
         List of genera to seed the search with.
@@ -240,10 +240,10 @@ def get_seed_indices(database_df, seed_genera=None, seed_species=None):
 
     if seed_genera:
         seed_genera = seed_genera.split(";")
-        seed_genera_indices = database_df[database_df["genus"].isin(seed_genera)].index
+        seed_genera_indices = db_metadata[db_metadata["genus"].isin(seed_genera)].index
         
     if seed_species:
-        seed_species_indices = database_df[database_df["species"].isin(seed_species)].index
+        seed_species_indices = db_metadata[db_metadata["species"].isin(seed_species)].index
 
     return seed_genera_indices, seed_species_indices
 
@@ -267,7 +267,7 @@ def main():
                                                                                bin_size)
 
     # Get the index of selected genera and species seeds.
-    seed_genera, seed_species = get_seed_indices(database_df,
+    seed_genera, seed_species = get_seed_indices(db_metadata,
                                                  seed_genera=args.seed_genera,
                                                  seed_species=args.seed_species)
 
