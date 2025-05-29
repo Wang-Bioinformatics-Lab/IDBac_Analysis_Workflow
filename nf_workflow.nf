@@ -349,18 +349,18 @@ process databaseSearch {
     file "input_spectra/*"
 
     output:
-    file 'db_results.tsv'
-    file 'db_db_distance.tsv'
-    file 'complete_output_results.tsv'
+    file 'db_results.tsv'               // Distance between query spectra and database hits
+    file 'db_db_distance.tsv'           // Distance between database hits
+    file 'complete_output_results.tsv'  // Output results with metadata
     file 'query_spectra/*.mzML'
 
     """
     python $TOOL_FOLDER/database_search.py \
-    input_spectra \
-    $idbac_database_filtered_json \
-    db_results.tsv \
-    complete_output_results.tsv \
-    db_db_distance.tsv \
+    --input_folder input_spectra \
+    --database_filtered_json $idbac_database_filtered_json \
+    --output_results_tsv db_results.tsv \
+    --complete_output_results_tsv complete_output_results.tsv \
+    --output_db_db_distance_tsv db_db_distance.tsv \
     --merge_replicates ${params.merge_replicates} \
     --score_threshold ${params.database_search_threshold} \
     --mass_range_lower ${params.database_search_mass_range_lower} \

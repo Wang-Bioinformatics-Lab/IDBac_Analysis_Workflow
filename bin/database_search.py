@@ -111,38 +111,95 @@ def compute_db_db_distance(database_df, db_numerical_columns, output_path, dista
     
     return output_results_df
 
-def main():
+def parse_args():
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('input_folder')
-    parser.add_argument('database_filtered_json')
-    parser.add_argument('output_results_tsv')
-    parser.add_argument('complete_output_results_tsv')
-    parser.add_argument('output_db_db_distance_tsv')
-    parser.add_argument('--merge_replicates', default="Yes")
-    parser.add_argument('--score_threshold', default=0.7, type=float)
-    parser.add_argument('--distance', default="cosine", help="The distance metric to use for the search", choices=["cosine", "euclidean", "presence"])
-    parser.add_argument('--bin_size', type=float, help="Size of the spectra bins for distance calculations.", required=True)
-    parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value to consider for binning.")
-    parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value to consider for binning.")
-    # I actually don't know how the checkbox form input works, so this is a placeholder for now TODO, Potential BUG
-    parser.add_argument('--seed_genera', default='', help="Comma separated list of genera to seed the search with.")
-    parser.add_argument('--seed_species', default='', help="Comma separated list of species to seed the search with.")
-    parser.add_argument('--debug', action='store_true')
-    
-    args = parser.parse_args()
-    
-    bin_size = float(args.bin_size)
+    parser.add_argument(
+        '--input_folder'
+        )
+    parser.add_argument(
+        '--database_filtered_json'
+        )
+    parser.add_argument(
+        '--output_results_tsv'
+        )
+    parser.add_argument(
+        '--complete_output_results_tsv'
+        )
+    parser.add_argument(
+        '--output_db_db_distance_tsv'
+        )
+    parser.add_argument(
+        '--output_query_query_distnaces_tsv',
+        default="query_query_distances.tsv",
+        )
+    parser.add_argument(
+        '--merge_replicates',
+        default="Yes"
+        )
+    parser.add_argument(
+        '--score_threshold',
+        default=0.7,
+        type=float
+        )
+    parser.add_argument(
+        '--distance',
+        default="cosine",
+        help="The distance metric to use for the search",
+        choices=["cosine", "euclidean", "presence"]
+        )
+    parser.add_argument(
+        '--bin_size',
+        type=float,
+        help="Size of the spectra bins for distance calculations.",
+        required=True
+        )
+    parser.add_argument(
+        '--mass_range_lower',
+        default=2000.0,
+        type=float,
+        help="Minimum m/z value to consider for binning."
+        )
+    parser.add_argument(
+        '--mass_range_upper',
+        default=20000.0,
+        type=float,
+        help="Maximum m/z value to consider for binning."
+        )
+    parser.add_argument(
+        '--seed_genera',
+        default='',
+        help="Comma separated list of genera to seed the search with."
+        )
+    parser.add_argument(
+        '--seed_species',
+        default='',
+        help="Comma separated list of species to seed the search with."
+        )
+    parser.add_argument(
+        '--debug',
+        action='store_true'
+        )
 
-    if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
-        # Log all params
-        for arg in vars(args):
-            logging.debug("%s: %s", arg, getattr(args, arg))
-    else:
-        logging.basicConfig(level=logging.INFO)
-
+def load_and_prepare_database(database_filtered_json, mass_range_lower, mass_range_upper, bin_size):
+    """
+    Load the database from a JSON file and prepare it for matching.
+    
+    Args:
+    database_filtered_json: str
+        Path to the JSON file containing the database spectra.
+    mass_range_lower: float
+        Minimum m/z value to consider for binning.
+    mass_range_upper: float
+        Maximum m/z value to consider for binning.
+    bin_size: float
+        Size of the spectra bins for distance calculations.
+    
+    Returns:
+    database_df: pd.DataFrame
+        DataFrame containing the prepared database spectra.
+    """
     # Loading the database, this will also merge the spectra
-    database_df = load_database(args.database_filtered_json, args.mass_range_lower, args.mass_range_upper, bin_size)
+    database_df = load_database(database_filtered_json, mass_range_lower, mass_range_upper, bin_size)
     logging.debug("Database shape: {}".format(database_df.shape))
     logging.debug("database_df {}".format(database_df))
 
@@ -156,19 +213,63 @@ def main():
         if required_col not in database_df.columns:
             raise ValueError("Database metadata does not contain required column: {}".format(required_col))
     db_metadata = database_df.loc[:, db_metadata]
-
-    # Get the index of selected genera and species seeds
     db_metadata.reset_index(inplace=True)   # Reset index to ensure contiguous numbering
-    if args.seed_genera:
-        seed_genera = args.seed_genera.split(";")
-        seed_genera_indices = db_metadata[db_metadata["genus"].isin(seed_genera)].index
+
+    return database_df, db_numerical_columns, db_metadata
+
+def get_seed_indices(database_df, seed_genera=None, seed_species=None):
+    """
+    Get the indices of the database entries that match the seed genera and species.
+    
+    Args:
+    database_df: pd.DataFrame
+        DataFrame containing the database spectra.
+    seed_genera: str
+        List of genera to seed the search with.
+    seed_species: str
+        List of species to seed the search with.
+    
+    Returns:
+    seed_genera_indices: pd.Index
+        Indices of the database entries that match the seed genera.
+    seed_species_indices: pd.Index
+        Indices of the database entries that match the seed species.
+    """
+    seed_genera_indices = pd.Index([])
+    seed_species_indices = pd.Index([])
+
+    if seed_genera:
+        seed_genera = seed_genera.split(";")
+        seed_genera_indices = database_df[database_df["genus"].isin(seed_genera)].index
+        
+    if seed_species:
+        seed_species_indices = database_df[database_df["species"].isin(seed_species)].index
+
+    return seed_genera_indices, seed_species_indices
+
+def main():
+    
+    args = parse_args()
+    
+    bin_size = float(args.bin_size)
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+        # Log all params
+        for arg in vars(args):
+            logging.debug("%s: %s", arg, getattr(args, arg))
     else:
-        seed_genera_indices = []
-    if args.seed_species:
-        seed_species = args.seed_species.split(";")
-        seed_species_indices = db_metadata[db_metadata["species"].isin(seed_species)].index
-    else:
-        seed_species_indices = []
+        logging.basicConfig(level=logging.INFO)
+
+    database_df, db_numerical_columns, db_metadata = load_and_prepare_database(args.database_filtered_json,
+                                                                               args.mass_range_lower,
+                                                                               args.mass_range_upper,
+                                                                               bin_size)
+
+    # Get the index of selected genera and species seeds.
+    seed_genera, seed_species = get_seed_indices(database_df,
+                                                 seed_genera=args.seed_genera,
+                                                 seed_species=args.seed_species)
 
     all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
 
@@ -308,7 +409,10 @@ def main():
     database_results_df = database_results_df.merge(database_df, left_on="database_id", right_on="database_id", how="left")
     
     compute_db_db_distance(database_results_df, db_numerical_columns, args.output_db_db_distance_tsv, distance_metric=args.distance)
-                
+    
+    # Similarly, we want to compute the pairwise distance between all queries
+    # TODO
+
     # Enrich the library information by hitting the web api
     all_database_metadata_json = requests.get("https://idbac.org/api/spectra").json()
     all_database_metadata_df = pd.DataFrame(all_database_metadata_json)
