@@ -120,17 +120,20 @@ def parse_args():
         '--database_filtered_json'
         )
     parser.add_argument(
-        '--output_results_tsv'
+        '--output_search_results_tsv',
+        help="Output file for database search results",
         )
     parser.add_argument(
-        '--complete_output_results_tsv'
+        '--complete_output_results_tsv',
+        help="Output file for database search results containing all query-db distances for anything returned in the database search"
         )
     parser.add_argument(
-        '--output_db_db_distance_tsv'
+        '--output_db_db_distance_tsv',
+        help="Output file for database to database distances",
         )
     parser.add_argument(
-        '--output_query_query_distnaces_tsv',
-        default="query_query_distances.tsv",
+        '--output_query_query_distances_tsv',
+        help="Output file for query to query distances",
         )
     parser.add_argument(
         '--merge_replicates',
@@ -345,6 +348,101 @@ def database_search(input_paths, bin_size, database_df,
 
     return output_results_list, complete_output_results_list
 
+def within_query_distance(input_paths, bin_size, args):
+    """ This function computes the pairwise distance between all queries in the input folder.
+    
+    Args:
+    input_paths: list
+        List of paths to the input files.
+    bin_size: float
+        Size of the spectra bins for distance calculations.
+    args: argparse.Namespace
+        Parsed command line arguments.
+    Returns:
+    output_results_df: pd.DataFrame
+        DataFrame containing the pairwise distances between all queries.
+    """
+    logging.info("Computing pairwise distances between all {} queries in the input folder.".format(len(input_paths)))
+    all_queries = []
+    for input_filename in input_paths:
+        # Reading Query
+        ms1_df, _ = load_data(input_filename)
+        
+        spectra_binned_df = spectrum_binner(ms1_df,
+                                            input_filename,
+                                            bin_size=bin_size,
+                                            min_mz=args.mass_range_lower,
+                                            max_mz=args.mass_range_upper,
+                                            merge_replicates="Yes",)
+        spectra_binned_df.drop(['scan'], axis=1, inplace=True)
+
+        all_queries.append(spectra_binned_df)
+
+    logging.debug("Sample of queries: {}".format(all_queries[0]))
+
+    # Concatenate all queries into a single DataFrame
+    all_queries_df = pd.concat(all_queries, ignore_index=True)
+    all_queries_df.set_index("filename", inplace=True)
+
+    # Now lets do pairwise cosine distance
+    query_data_np = all_queries_df.to_numpy()
+    query_data_np = np.nan_to_num(query_data_np, 0.0)  # Fill NaNs with 0 for distance calculation  (means no peak)
+    logging.debug("query_data_np shape: {}".format(query_data_np.shape))
+    logging.debug("query_data_np: {}".format(query_data_np))
+    logging.debug("query_data_np max: {}".format(np.max(query_data_np)))
+    logging.debug("query_data_np min: {}".format(np.min(query_data_np)))
+    logging.debug("query_data_np contains NaNs: {}".format(np.isnan(query_data_np).any()))
+
+    distance_matrix = compute_distances_binned(query_data_np, distance_metric=args.distance)
+
+    # Create a DataFrame from the distance matrix
+    distance_df = pd.DataFrame(distance_matrix, index=all_queries_df.index, columns=all_queries_df.index)
+    # Convert to adjacency list
+    distance_df_melted = distance_df.melt(
+        ignore_index=False, var_name="query_filename_right", value_name="distance"
+    ).reset_index()
+    distance_df_melted.columns = ["query_filename_left", "query_filename_right", "distance"]
+
+    # For now, let's do a sanity check on random indices
+    if len(distance_df_melted) > 0:
+        vals_a = distance_df_melted["query_filename_left"].sample(5, replace=True).values
+        vals_b = distance_df_melted["query_filename_right"].sample(5, replace=True).values
+
+        for a, b in zip(vals_a, vals_b):
+            # Check that the distance is symmetric
+            assert distance_df_melted.loc[(distance_df_melted["query_filename_left"] == a) & (distance_df_melted["query_filename_right"] == b), "distance"].values[0] == \
+                distance_df_melted.loc[(distance_df_melted["query_filename_left"] == b) & (distance_df_melted["query_filename_right"] == a), "distance"].values[0], \
+                f"Distance between {a} and {b} is not the same as between {b} and {a} (not symmetric)."
+                
+            # Check that it's the same in the melted DataFrame
+            assert distance_df_melted.loc[(distance_df_melted["query_filename_left"] == a) & (distance_df_melted["query_filename_right"] == b), "distance"].values[0] == \
+                distance_df.loc[a, b], \
+                f"Distance between {a} and {b} in melted DataFrame does not match the original DataFrame: {distance_df.loc[a, b]}"
+                
+            # Also compare against a manual distance calculation
+            manual_distance = compute_distances_binned(np.nan_to_num(all_queries_df.loc[a].to_numpy()).reshape(1, -1),
+                                                       np.nan_to_num(all_queries_df.loc[b].to_numpy()).reshape(1, -1),
+                                                       distance_metric=args.distance)
+            assert np.isclose(distance_df_melted.loc[(distance_df_melted["query_filename_left"] == a) & (distance_df_melted["query_filename_right"] == b), "distance"].values[0],
+                               manual_distance[0][0]), \
+                f"Distance between {a} and {b} is not the same as the manual distance calculation: {manual_distance[0][0]}"
+    else:
+        logging.warning("No queries found in the input folder. Returning empty distance DataFrame.")
+
+    logging.info("Done computing pairwise distances between all queries.")
+    return distance_df_melted
+    
+
+def mock_output_results(args):
+    # Write headers only
+    with open(args.output_results_tsv, "w") as f:
+        f.write("query_index\tdatabase_index\tdistance\tquery_filename\n")
+    with open(args.complete_output_results_tsv, "w") as f:
+        f.write("query_index\tdatabase_index\tdistance\tquery_filename\n")
+    with open(args.output_db_db_distance_tsv, "w") as f:
+        f.write("left_index\tright_index\tdatabase_id_left\tdatabase_id_right\tdatabase_scan_left\tdatabase_scan_right\tdistance\n")
+    exit(0)
+
 def main():
     
     args = parse_args()
@@ -380,19 +478,15 @@ def main():
     small_database_df = database_df[["row_count", "database_id"]]
     small_database_df["database_scan"] = small_database_df["database_id"]
 
+    within_query_distance_df = within_query_distance(all_input_files, bin_size, args)
+    within_query_distance_df.to_csv(args.output_query_query_distances_tsv, sep="\t", index=False)
+
     output_results_df = pd.DataFrame(output_results_list, columns=["query_index", "database_index", "distance", "query_filename"])
     complete_output_results_df = pd.DataFrame(complete_output_results_list, columns=["query_index", "database_index", "distance", "query_filename"])
     if len(output_results_df) == 0:
         print("No matches found")
-        # Write headers only
-        with open(args.output_results_tsv, "w") as f:
-            f.write("query_index\tdatabase_index\tdistance\tquery_filename\n")
-        with open(args.complete_output_results_tsv, "w") as f:
-            f.write("query_index\tdatabase_index\tdistance\tquery_filename\n")
-        with open(args.output_db_db_distance_tsv, "w") as f:
-            f.write("left_index\tright_index\tdatabase_id_left\tdatabase_id_right\tdatabase_scan_left\tdatabase_scan_right\tdistance\n")
-        exit(0)
-    
+        mock_output_results(args)    
+        
     # Here we want to take the results from the search
     output_results_df = output_results_df.merge(small_database_df, left_on="database_index", right_on="row_count", how="left")
     output_results_df["database_id"] = output_results_df["database_scan"]
@@ -430,7 +524,7 @@ def main():
     complete_output_results_df = complete_output_results_df.rename(columns={"Strain name": "db_strain_name", "Culture Collection": "db_culture_collection", "Sample name": "db_sample_name", "Genbank accession": "db_genbank_accession"})
 
     # Output data
-    output_results_df.to_csv(args.output_results_tsv, sep="\t", index=False)
+    output_results_df.to_csv(args.output_search_results_tsv, sep="\t", index=False)
     complete_output_results_df.to_csv(args.complete_output_results_tsv, sep="\t", index=False)
 
 
