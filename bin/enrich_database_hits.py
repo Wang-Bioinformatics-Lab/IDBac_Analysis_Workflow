@@ -38,6 +38,7 @@ def main():
             family  = this_db_entry["family"]
             genus   = this_db_entry["genus"]
             species = this_db_entry["species"]
+            ncbi_taxid = this_db_entry["NCBI taxid"]
             if family is None:
                 family = ""
             if genus is None:
@@ -48,13 +49,17 @@ def main():
             delimited_taxonomy = family + ";" + genus + ";" + species
 
             all_none = ((family is "") and (genus is "") and (species is ""))
-            if all_none:
+            if all_none:    # Fall back to 16S Taxonomy if Everything Else is None
                 if this_db_entry["16S Taxonomy"] is not None:
                     delimited_taxonomy = f"{str(this_db_entry['16S Taxonomy']).strip()} (User Submitted 16S)"
                 else:
                     delimited_taxonomy = ""
 
             
+            result_obj["db_family"] = family
+            result_obj["db_genus"] = genus
+            result_obj["db_species"] = species
+            result_obj["NCBI taxid"] = ncbi_taxid
 
             result_obj["db_taxonomy"] = delimited_taxonomy
 
