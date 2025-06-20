@@ -435,7 +435,7 @@ def within_query_distance(input_paths, bin_size, args):
 
 def mock_output_results(args):
     # Write headers only
-    with open(args.output_results_tsv, "w") as f:
+    with open(args.output_search_results_tsv, "w") as f:
         f.write("query_index\tdatabase_index\tdistance\tquery_filename\n")
     with open(args.complete_output_results_tsv, "w") as f:
         f.write("query_index\tdatabase_index\tdistance\tquery_filename\n")
