@@ -79,6 +79,31 @@ process outputErrors {
     """
 }
 
+process mergeForPlotting {
+    publishDir "./nf_output", mode: 'copy'
+
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    cpus 2
+    memory '20 GB'
+    cache false
+
+    errorStrategy 'ignore'
+
+    input:
+    file input_file
+
+    output:
+    path 'raw_merged_for_plotting/*.mzML'
+
+    """
+    mkdir -p raw_merged_for_plotting
+    python3 $TOOL_FOLDER/raw_merge.py \
+        --input_file $input_file \
+        --output_folder raw_merged_for_plotting \
+    """
+}
+
 process baselineCorrection {
     publishDir "./nf_output", mode: 'copy'
 
@@ -498,6 +523,9 @@ workflow {
         }
         summarizeSmallMolecule(baseline_corrected_small_molecule.collect())
     }
+
+    // Do a direct merge of protein spectra for downstream plotting
+    mergeForPlotting(input_mzml_files_ch)
 
     // Doing baseline correction
     // baseline_query_spectra_ch = Channel.empty()

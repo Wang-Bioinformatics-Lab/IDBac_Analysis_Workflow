@@ -1,7 +1,7 @@
 workflowname: idbac_analysis_workflow
 workflowdescription: idbac_analysis_workflow
 workflowlongdescription: This is a idbac analysis nextflow workflow for GNPS2
-workflowversion: "2025.05.29.00"
+workflowversion: "2025.08.01.00"
 workflowfile: nf_workflow.nf
 workflowautohide: false
 adminonly: false
