@@ -8,3 +8,12 @@ dependencies:
   - r-base=3.6
   - r-maldiquant
   - r-maldiquantforeign
+  - ijson
+  - pandas
+  - tqdm
+  - joblib
+  - json5
+  - pip
+  - pip:
+    - psims
+    - pyteomics

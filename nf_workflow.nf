@@ -11,6 +11,7 @@ params.distance = "cosine"
 params.database_search_threshold = "0.7"
 params.database_search_mass_range_lower = "2000"
 params.database_search_mass_range_upper = "20000"
+params.ml_search = "No" // If set to "Yes", it will use the ML database search, otherwise it will use the standard database search
 params.metadata_column = "None"
 
 params.seed_genera = ""
@@ -22,6 +23,8 @@ params.search_bin_size  = 10  // Database search uses 10.0 Da bins by default
 params.debug_flag = "--debug" // Should be set to either "--debug" or ""
 
 TOOL_FOLDER = "$baseDir/bin"
+
+include { MLInferenceRawVectorsWorkflow as MLInferenceRawVectorsWorkflow } from "$baseDir/ml_inference/ml_inference.nf"  addParams(output_dir: "./nf_output/ml_inference")
 
 /* Simple sanity checks on mzML files that we can warn the users about
  * 1. Ensure each files has scans
@@ -354,8 +357,13 @@ process downloadDatabase {
     file 'idbac_database.json'
 
     """
+    ml_flag=""
+    if [ "${params.ml_search}" == "Yes" ]; then
+        ml_flag="--ml"
+    fi
+
     python $TOOL_FOLDER/download_database.py --output_library_json idbac_database.json \
-                                             --download_bin_size ${params.search_bin_size}
+                                             --download_bin_size ${params.search_bin_size} \${ml_flag} 
     """
 }
 
@@ -381,6 +389,11 @@ process databaseSearch {
     file 'query_spectra/*.mzML'
 
     """
+    ml_flag=""
+    if [ "${params.ml_search}" == "Yes" ]; then
+        ml_flag="--ml"
+    fi
+
     python $TOOL_FOLDER/database_search.py \
     --input_folder input_spectra \
     --database_filtered_json $idbac_database_filtered_json \
@@ -397,6 +410,7 @@ process databaseSearch {
     --seed_genera "${params.seed_genera}" \
     --seed_species "${params.seed_species}" \
     $params.debug_flag \
+    \${ml_flag} \
     """
 }
 
@@ -538,10 +552,17 @@ workflow {
     summarizeSpectra(merged_spectra_ch.collect())
 
     // Downloading Database
-    (output_idbac_database_ch) = downloadDatabase(1)
+    (output_idbac_database_ch) = downloadDatabase(1)            // In ML mode, this will contain ML data automatically
 
+    // Select the data we'll use for the DB search
+    processed_query_data = baseline_query_spectra_ch.collect() // Query data will need to be preprocessed and embedded
+    if (params.ml_search == "Yes") {
+        // If ML search is enabled, we run the ML inference workflow
+        ml_inference_results_ch = MLInferenceRawVectorsWorkflow(input_mzml_files_ch.collect())
+        processed_query_data = ml_inference_results_ch.collect()
+    } 
     // Matching database to query spectra
-    (core_search_results_ch, db_db_distances_ch, complete_search_results_ch, query_query_distance_ch, output_database_mzML) = databaseSearch(output_idbac_database_ch, baseline_query_spectra_ch.collect())
+    (core_search_results_ch, db_db_distances_ch, complete_search_results_ch, query_query_distance_ch, output_database_mzML) = databaseSearch(output_idbac_database_ch, processed_query_data)
 
     // Enriching database search results
     db_summary = downloadDatabaseSummary()

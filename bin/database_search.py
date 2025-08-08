@@ -12,6 +12,7 @@ import logging
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 from collections import defaultdict
 from utils import load_data, spectrum_binner, compute_distances_binned, write_spectra_df_to_mzML
+from pathlib import Path
 
 # Create an LRU Cache from functools
 @lru_cache(maxsize=1000)
@@ -36,10 +37,20 @@ def load_database(database_filtered_json, mz_min, mz_max, bin_size):
         formatted_spectrum["genus"] = spectrum["genus"]
         formatted_spectrum["species"] = spectrum["species"]
 
-        for peak in spectrum["peaks"]:
-            if peak["mz"] < mz_min or peak["mz"] > mz_max:
-                continue
-            formatted_spectrum["BIN_" + str(int(peak["mz"] / bin_size))] = peak["i"]
+        if "peaks" in spectrum and "ml_embedding" in spectrum:
+            raise ValueError("Spectrum should not contain both 'peaks' and 'ml_embedding'. Please check the database file.")
+
+        # If ml_embedding is present, use it instead of peaks (convert list values into BIN_ keys)
+        if "ml_embedding" in spectrum:
+            for i, value in enumerate(spectrum["ml_embedding"]):
+                formatted_spectrum["BIN_" + str(i)] = value
+        else:
+            for peak in spectrum["peaks"]:
+                if peak["mz"] < mz_min or peak["mz"] > mz_max:
+                    continue
+                formatted_spectrum["BIN_" + str(int(peak["mz"] / bin_size))] = peak["i"]
+
+
 
         formatted_database_spectra.append(formatted_spectrum)
 
@@ -182,6 +193,16 @@ def parse_args():
         '--debug',
         action='store_true'
         )
+    parser.add_argument(
+        '--ml',
+        action='store_true',
+        help="Use the ML database for the search. If not set, the standard database will be used."
+        )
+    
+    # Dump all args
+    for arg in vars(parser.parse_args()):
+        logging.info("%s: %s", arg, getattr(parser.parse_args(), arg))
+
     return parser.parse_args()
 
 
@@ -252,23 +273,59 @@ def get_seed_indices(db_metadata, seed_genera=None, seed_species=None):
 
     return seed_genera_indices, seed_species_indices
 
+def spectrum_iterator(input_data, bin_size, args):
+    is_mzmls = all([x.endswith(".mzML") for x in input_data])
+    is_feather = len(input_data) == 1 and input_data[0].endswith(".feather")
+    print("is_mzmls", is_mzmls, "is_feather", is_feather, 'input_data', input_data)
+    if is_mzmls:
+        for input_filename in input_data:
+            ms1_df, _ = load_data(input_filename)
+            spectra_binned_df = spectrum_binner(ms1_df,
+                                                input_filename,
+                                                bin_size=bin_size,
+                                                min_mz=args.mass_range_lower,
+                                                max_mz=args.mass_range_upper,
+                                                merge_replicates="Yes")
+            print("standard spectra_binned_df cols", spectra_binned_df.columns)
+            yield input_filename, spectra_binned_df
+    elif is_feather:
+        df = pd.read_feather(input_data[0])
+        print("feather df shape", df.shape)
+        df['filename'] = df["database_id"]
+        df = df.set_index("database_id")
+        # Prepend BIN_ to the columns
+        new_names = {col : "BIN_" + str(col) for col in df.columns if col not in ["filename", "genus", "species"]}
+        df.rename(columns=new_names, inplace=True)
+        
+        # TODO probably need genus and species columns
+        for database_id in df.index:
+            print("Yielding database_id", database_id, df.loc[[database_id]])
+            yield database_id, df.loc[[database_id]]
+    else:
+        raise ValueError("Unsupported input_data type")
+
 def database_search(input_paths, bin_size, database_df,
                     db_numerical_columns, seed_genera_indices, seed_species_indices, args):
+    print("Running database search with the following parameters:")
     output_results_list = []
     complete_output_results = defaultdict(list)
 
-    for input_filename in input_paths:
-        # Reading Query
-        ms1_df, _ = load_data(input_filename)
-        
-        spectra_binned_df = spectrum_binner(ms1_df,
-                                            input_filename,
-                                            bin_size=bin_size,
-                                            min_mz=args.mass_range_lower,
-                                            max_mz=args.mass_range_upper,
-                                            merge_replicates="Yes",)
+    iterator = spectrum_iterator(input_paths, bin_size, args)
 
-        output_filename = os.path.join('query_spectra',  os.path.basename(input_filename))
+    for input_filename, spectra_binned_df in iterator:
+        print("I am in the iterator")
+        # Reading Query
+        # ms1_df, _ = load_data(input_filename)
+        
+        # spectra_binned_df = spectrum_binner(ms1_df,
+        #                                     input_filename,
+        #                                     bin_size=bin_size,
+        #                                     min_mz=args.mass_range_lower,
+        #                                     max_mz=args.mass_range_upper,
+        #                                     merge_replicates="Yes",)
+        # print("standard spectra_binned_df cols", spectra_binned_df.columns)
+
+        output_filename = os.path.join('query_spectra',  Path(input_filename).stem + ".mzML")
         write_spectra_df_to_mzML(output_filename, spectra_binned_df, bin_size)
         
         # Formatting Database to fill NAs
@@ -364,18 +421,12 @@ def within_query_distance(input_paths, bin_size, args):
     """
     logging.info("Computing pairwise distances between all {} queries in the input folder.".format(len(input_paths)))
     all_queries = []
-    for input_filename in input_paths:
-        # Reading Query
-        ms1_df, _ = load_data(input_filename)
-        
-        spectra_binned_df = spectrum_binner(ms1_df,
-                                            input_filename,
-                                            bin_size=bin_size,
-                                            min_mz=args.mass_range_lower,
-                                            max_mz=args.mass_range_upper,
-                                            merge_replicates="Yes",)
-        spectra_binned_df.drop(['scan'], axis=1, inplace=True)
 
+    iterator = spectrum_iterator(input_paths, bin_size, args)
+
+    for input_filename, spectra_binned_df in iterator:
+        if 'scan' in spectra_binned_df.columns:
+            spectra_binned_df.drop(['scan'], axis=1, inplace=True)
         all_queries.append(spectra_binned_df)
 
     logging.debug("Sample of queries: {}".format(all_queries[0]))
@@ -467,7 +518,10 @@ def main():
                                                                  seed_genera=args.seed_genera,
                                                                  seed_species=args.seed_species)
 
-    all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
+    if args.ml:
+        all_input_files = glob.glob(os.path.join(args.input_folder, "*.feather"))
+    else:
+        all_input_files = glob.glob(os.path.join(args.input_folder, "*.mzML"))
 
     
     output_results_list, complete_output_results_list = database_search(all_input_files, bin_size, database_df,
