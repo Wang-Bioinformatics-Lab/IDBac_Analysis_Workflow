@@ -24,7 +24,7 @@ params.debug_flag = "--debug" // Should be set to either "--debug" or ""
 
 TOOL_FOLDER = "$baseDir/bin"
 
-include { MLInferenceRawVectorsWorkflow as MLInferenceRawVectorsWorkflow } from "$baseDir/ml_inference/ml_inference.nf"  addParams(output_dir: "./nf_output/ml_inference")
+include { MLInferenceRawVectorsWorkflow as MLInferenceRawVectorsWorkflow } from "$baseDir/bin/ml_inference/ml_inference.nf"  addParams(output_dir: "./nf_output/ml_inference")
 
 /* Simple sanity checks on mzML files that we can warn the users about
  * 1. Ensure each files has scans

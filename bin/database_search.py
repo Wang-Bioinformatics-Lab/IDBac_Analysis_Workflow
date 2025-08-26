@@ -266,9 +266,12 @@ def get_seed_indices(db_metadata, seed_genera=None, seed_species=None):
 
     if seed_genera:
         seed_genera = seed_genera.split(";")
+        seed_genera = [x.strip() for x in seed_genera]
         seed_genera_indices = db_metadata[db_metadata["genus"].isin(seed_genera)].index
         
     if seed_species:
+        seed_species = seed_species.split(";")
+        seed_species = [x.strip() for x in seed_species]
         seed_species_indices = db_metadata[db_metadata["species"].isin(seed_species)].index
 
     return seed_genera_indices, seed_species_indices
