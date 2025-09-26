@@ -52,6 +52,21 @@ Views:
             -   title: "Error"
                 data: Error
 
+-   name: Query-Query Distances
+    displayname: Query-Query Distances
+    viewname: queryquerydistances
+    displaytype: datatable_serverbig
+    parameters:
+        filename: nf_output/search/query_query_distances.tsv
+        error_missingfile: "No File"
+        columns:
+            -   title: "Filename 1"
+                data: query_filename_left
+            -   title: "Filename 2"
+                data: query_filename_right
+            -   title: "Distance"
+                data: distance
+
 # -   name: Visualize Dendrogram
 #     displayname: Visualize Dendrogram
 #     viewname: visualize

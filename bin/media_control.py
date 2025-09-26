@@ -109,9 +109,17 @@ def main():
     # Since sometimes the metadata has asterisks in the 'Scan/Coordinate' column that extend beyond the remainder of the values, we need to remove these rows
     metadata_df = metadata_df.dropna(subset=[x for x in metadata_df.columns if 'Scan/Coordinate' != x], how='all')
     
+    # Sanity check to make sure the small molecule file is in our metadata file
+    if os.path.basename(args.small_molecule_file) not in metadata_df['Small molecule file name'].values:
+        # Check if it's in there (case insensitive)
+        if os.path.basename(args.small_molecule_file).lower().strip() in metadata_df['Small molecule file name'].str.lower().str.strip().values:
+            raise ValueError(f"Found '{os.path.basename(args.small_molecule_file)}' in the metadata file, but it is not an exact match. Please check the case, spelling, and leading and training spaces.")
+
+        raise ValueError(f"Could not find '{os.path.basename(args.small_molecule_file)}' in the metadata file. Is it in the metadata file?")
+
     # Get relevant media control file for the mzML file
     try:
-        media_control_file = metadata_df[metadata_df['Small molecule file name'] == os.path.basename(args.small_molecule_file)]['Blank filename'].values[0] # Column names subject to change
+        media_control_file = metadata_df[metadata_df['Small molecule file name'] == os.path.basename(args.small_molecule_file)]['Blank filename'].values[0]
     except IndexError:
         print(metadata_df)
         print(metadata_df[metadata_df['Small molecule file name'] == os.path.basename(args.small_molecule_file)])

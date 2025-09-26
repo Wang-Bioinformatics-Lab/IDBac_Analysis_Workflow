@@ -1,7 +1,7 @@
 workflowname: idbac_analysis_workflow
-workflowdescription: idbac_analysis_workflow
-workflowlongdescription: This is a idbac analysis nextflow workflow for GNPS2
-workflowversion: "2025.05.17.00"
+workflowdescription: IDBac-Analysis
+workflowlongdescription: Welcome to the IDBac-Analysis workflow! This workflow processes protein and small molecule MALDI mass spectrometry data for use with IDBac-Analysis, an interactive platform for bacterial identification and metabolite profiling. You can read more about this workflow in the documentation https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbac-brukerstart-here/
+workflowversion: "2025.09.26.00"
 workflowfile: nf_workflow.nf
 workflowautohide: false
 adminonly: false
@@ -10,30 +10,30 @@ parameterlist:
     - displayname: File Selection
       paramtype: section
 
-    - displayname: Input Protein Folder
+    - displayname: Input .mzML Files for Protein MALDI Spectra
       paramtype: fileselector
       nf_paramname: input_spectra_folder
-      formplaceholder: Enter the path to data
+      formplaceholder: Input .mzML files for protein MALDI spectra
       formvalue: ""
       targettaskfolder: input_spectra
       optional: false
       selectsinglefile: false
       folderunroll: true
 
-    - displayname: Input Small Molecule Folder
+    - displayname: Input .mzML Files for Small Molecule MALDI Spectra
       paramtype: fileselector
       nf_paramname: input_small_molecule_folder
-      formplaceholder: Enter the path to data
+      formplaceholder: Input .mzML files for small molecule MALDI spectra
       formvalue: ""
       targettaskfolder: input_small_molecule_folder
       optional: false
       selectsinglefile: false
       folderunroll: true
 
-    - displayname: Input Small Molecule Media Control Folder (Optional)
+    - displayname: Input .mzML Files for Small Molecule Media Control (Optional)
       paramtype: fileselector
       nf_paramname: input_media_control_folder
-      formplaceholder: Enter the path to data
+      formplaceholder: Input .mzML files for small molecule media control
       formvalue: ""
       targettaskfolder: input_media_control
       optional: true
@@ -41,10 +41,10 @@ parameterlist:
       folderunroll: true
       tooltip: "Upload a folder containing media control files for small molecule data. File names must match those in the metadata file."
 
-    - displayname: Input Metadata File (Optional)
+    - displayname: Input .csv Metadata File (Optional)
       paramtype: fileselector
       nf_paramname: input_metadata_file
-      formplaceholder: Enter the path to data
+      formplaceholder: Input .csv metadata file
       formvalue: ""
       targettaskfolder: input_metadata_file
       optional: true

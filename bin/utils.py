@@ -50,9 +50,9 @@ def load_data(input_filename):
     with mzml.read(input_filename) as reader:
         for spectrum in tqdm(reader):
             try:
-                scan = spectrum["id"].replace("scanId=", "").split("scan=")[-1]
+                scan = spectrum["id"].replace("scanId=", "").split("scan=")[-1]+f"_{spectrum['index']}"
             except:
-                scan = spectrum["id"]
+                scan = spectrum["id"] + str(spectrum['index'])
 
             mz = spectrum["m/z array"]
             intensity = spectrum["intensity array"]
@@ -172,6 +172,11 @@ def load_metadata_file(metadata_path:str):
         elif 'Metadata template' in metadata_df:
             metadata_df = metadata_df['Metadata template']
         else:
+            # Pop "instructions" or Instructions or anything like that
+            all_keys = list(metadata_df.keys())
+            for key in all_keys:
+                if key.lower().strip() in ['instructions', 'instruction', 'metadata instructions']:
+                    metadata_df.pop(key)
             # If there is only one sheet, use that
             if len(metadata_df) == 1:
                 metadata_df = list(metadata_df.values())[0]
@@ -187,6 +192,10 @@ def load_metadata_file(metadata_path:str):
         elif 'Metadata template' in metadata_df:
             metadata_df = metadata_df['Metadata template']
         else:
+            all_keys = list(metadata_df.keys())
+            for key in all_keys:
+                if key.lower().strip() in ['instructions', 'instruction', 'metadata instructions']:
+                    metadata_df.pop(key)
             # If there is only one sheet, use that
             if len(metadata_df) == 1:
                 metadata_df = list(metadata_df.values())[0]

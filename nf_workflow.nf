@@ -7,21 +7,24 @@ params.input_media_control_folder = ""
 params.input_metadata_file = "NO_FILE"
 
 params.merge_replicates = "Yes"
-params.distance = "presence"
+params.distance = "cosine"
 params.database_search_threshold = "0.7"
 params.database_search_mass_range_lower = "2000"
 params.database_search_mass_range_upper = "20000"
+params.ml_search = "No" // If set to "Yes", it will use the ML database search, otherwise it will use the standard database search
 params.metadata_column = "None"
 
 params.seed_genera = ""
 params.seed_species = ""
 
-params.heatmap_bin_size = 10.0   // Heatmaps use 1.0 Da bins by default
-params.search_bin_size  = 10.0  // Database search uses 10.0 Da bins by default
+params.heatmap_bin_size = 10  // Heatmaps use 1.0 Da bins by default
+params.search_bin_size  = 10  // Database search uses 10.0 Da bins by default
 
-params.debug_flag = "" // Should be set to either "--debug" or ""
+params.debug_flag = "--debug" // Should be set to either "--debug" or ""
 
 TOOL_FOLDER = "$baseDir/bin"
+
+include { MLInferenceRawVectorsWorkflow as MLInferenceRawVectorsWorkflow } from "$baseDir/bin/ml_inference/ml_inference.nf"  addParams(output_dir: "./nf_output/ml_inference")
 
 /* Simple sanity checks on mzML files that we can warn the users about
  * 1. Ensure each files has scans
@@ -76,6 +79,31 @@ process outputErrors {
     """
     cat $input_files > errors.csv
     sed -i 1i"Error_Level,Scan,Filename,Error" errors.csv   # Add headers (since we are concatenating multiple files)
+    """
+}
+
+process mergeForPlotting {
+    publishDir "./nf_output", mode: 'copy'
+
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    cpus 2
+    memory '20 GB'
+    cache false
+
+    errorStrategy 'ignore'
+
+    input:
+    file input_file
+
+    output:
+    path 'raw_merged_for_plotting/*.mzML'
+
+    """
+    mkdir -p raw_merged_for_plotting
+    python3 $TOOL_FOLDER/raw_merge.py \
+        --input_file $input_file \
+        --output_folder raw_merged_for_plotting \
     """
 }
 
@@ -329,8 +357,13 @@ process downloadDatabase {
     file 'idbac_database.json'
 
     """
+    ml_flag=""
+    if [ "${params.ml_search}" == "Yes" ]; then
+        ml_flag="--ml"
+    fi
+
     python $TOOL_FOLDER/download_database.py --output_library_json idbac_database.json \
-                                             --download_bin_size ${params.search_bin_size}
+                                             --download_bin_size ${params.search_bin_size} \${ml_flag} 
     """
 }
 
@@ -340,7 +373,7 @@ process databaseSearch {
     cpus 2
     memory '20 GB'
 
-    cache true
+    cache false
 
     conda "$TOOL_FOLDER/conda_env.yml"
 
@@ -349,18 +382,25 @@ process databaseSearch {
     file "input_spectra/*"
 
     output:
-    file 'db_results.tsv'
-    file 'db_db_distance.tsv'
-    file 'complete_output_results.tsv'
+    file 'db_results.tsv'               // Distance between query spectra and database hits
+    file 'db_db_distance.tsv'           // Distance between database hits
+    file 'complete_output_results.tsv'  // Output results with metadata
+    file 'query_query_distances.tsv'      // Distance between query spectra
     file 'query_spectra/*.mzML'
 
     """
+    ml_flag=""
+    if [ "${params.ml_search}" == "Yes" ]; then
+        ml_flag="--ml"
+    fi
+
     python $TOOL_FOLDER/database_search.py \
-    input_spectra \
-    $idbac_database_filtered_json \
-    db_results.tsv \
-    complete_output_results.tsv \
-    db_db_distance.tsv \
+    --input_folder input_spectra \
+    --database_filtered_json $idbac_database_filtered_json \
+    --output_search_results_tsv db_results.tsv \
+    --complete_output_results_tsv complete_output_results.tsv \
+    --output_db_db_distance_tsv db_db_distance.tsv \
+    --output_query_query_distances_tsv query_query_distances.tsv \
     --merge_replicates ${params.merge_replicates} \
     --score_threshold ${params.database_search_threshold} \
     --mass_range_lower ${params.database_search_mass_range_lower} \
@@ -370,6 +410,7 @@ process databaseSearch {
     --seed_genera "${params.seed_genera}" \
     --seed_species "${params.seed_species}" \
     $params.debug_flag \
+    \${ml_flag} \
     """
 }
 
@@ -389,7 +430,7 @@ process downloadDatabaseSummary {
     """
 }
 
-process enrichDatabaseSearch {
+process enrichCoreDatabaseSearch {
     publishDir "./nf_output/search", mode: 'copy'
 
     cpus 2
@@ -410,6 +451,31 @@ process enrichDatabaseSearch {
     python $TOOL_FOLDER/enrich_database_hits.py \
     $input_results \
     enriched_db_results.tsv \
+    --database_json $idbac_database_summary
+    """
+}
+
+process enrichCompleteDatabaseSearch {
+    publishDir "./nf_output/search", mode: 'copy'
+
+    cpus 2
+    memory '8 GB'
+
+    conda "$TOOL_FOLDER/conda_env_enrichment.yml"
+
+    cache false
+
+    input:
+    file input_results
+    file idbac_database_summary
+    
+    output:
+    file 'complete_enriched_db_results.tsv'
+    
+    """
+    python $TOOL_FOLDER/enrich_database_hits.py \
+    $input_results \
+    complete_enriched_db_results.tsv \
     --database_json $idbac_database_summary
     """
 }
@@ -472,6 +538,9 @@ workflow {
         summarizeSmallMolecule(baseline_corrected_small_molecule.collect())
     }
 
+    // Do a direct merge of protein spectra for downstream plotting
+    mergeForPlotting(input_mzml_files_ch)
+
     // Doing baseline correction
     // baseline_query_spectra_ch = Channel.empty()
     baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
@@ -483,14 +552,22 @@ workflow {
     summarizeSpectra(merged_spectra_ch.collect())
 
     // Downloading Database
-    (output_idbac_database_ch) = downloadDatabase(1)
+    (output_idbac_database_ch) = downloadDatabase(1)            // In ML mode, this will contain ML data automatically
 
+    // Select the data we'll use for the DB search
+    processed_query_data = baseline_query_spectra_ch.collect() // Query data will need to be preprocessed and embedded
+    if (params.ml_search == "Yes") {
+        // If ML search is enabled, we run the ML inference workflow
+        ml_inference_results_ch = MLInferenceRawVectorsWorkflow(input_mzml_files_ch.collect())
+        processed_query_data = ml_inference_results_ch.collect()
+    } 
     // Matching database to query spectra
-    (search_results_ch, output_database_mzML) = databaseSearch(output_idbac_database_ch, baseline_query_spectra_ch.collect())
+    (core_search_results_ch, db_db_distances_ch, complete_search_results_ch, query_query_distance_ch, output_database_mzML) = databaseSearch(output_idbac_database_ch, processed_query_data)
 
     // Enriching database search results
     db_summary = downloadDatabaseSummary()
-    enriched_results_db_ch = enrichDatabaseSearch(search_results_ch, db_summary)
+    enriched_core_results_db_ch     = enrichCoreDatabaseSearch(core_search_results_ch, db_summary)
+    enriched_complete_results_db_ch = enrichCompleteDatabaseSearch(complete_search_results_ch, db_summary)
 
     // Format the metadata
     formatted_metadata_ch = formatMetadata(metadata_file_ch)
@@ -511,8 +588,8 @@ workflow {
     // Logic to spoof outputs if no query spectra are present after merging
     collected = baseline_query_spectra_ch.collect()
     new_collected = collected.ifEmpty(file("No_Query_Spectra")) 
-    collected_enriched_results_db_ch = enriched_results_db_ch.collect()
-    enriched_results = collected_enriched_results_db_ch.ifEmpty(file("No_Enriched_Results"))
+    enriched_core_results_db_ch = enriched_core_results_db_ch.collect()
+    enriched_results = enriched_core_results_db_ch.ifEmpty(file("No_Enriched_Results"))
 
     // new_collected.view()
     // metadata_file_ch.view()
