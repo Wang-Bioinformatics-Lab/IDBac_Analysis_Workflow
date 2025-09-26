@@ -50,9 +50,9 @@ def load_data(input_filename):
     with mzml.read(input_filename) as reader:
         for spectrum in tqdm(reader):
             try:
-                scan = spectrum["id"].replace("scanId=", "").split("scan=")[-1]
+                scan = spectrum["id"].replace("scanId=", "").split("scan=")[-1]+f"_{spectrum['index']}"
             except:
-                scan = spectrum["id"]
+                scan = spectrum["id"] + str(spectrum['index'])
 
             mz = spectrum["m/z array"]
             intensity = spectrum["intensity array"]
