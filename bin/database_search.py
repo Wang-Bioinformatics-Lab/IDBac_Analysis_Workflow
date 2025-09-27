@@ -11,8 +11,9 @@ import numpy as np
 import logging
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 from collections import defaultdict
-from utils import load_data, spectrum_binner, compute_distances_binned, write_spectra_df_to_mzML
+from utils import load_data, spectrum_binner, compute_distances_binned, write_spectra_df_to_mzML, peak_filtering
 from pathlib import Path
+import yaml
 
 # Create an LRU Cache from functools
 @lru_cache(maxsize=1000)
@@ -198,6 +199,16 @@ def parse_args():
         action='store_true',
         help="Use the ML database for the search. If not set, the standard database will be used."
         )
+    parser.add_argument(
+        '--MALDI_instrument',
+        default='general',
+        help="The type of MALDI instrument used. This affects the peak filtering step."
+        )
+    parser.add_argument(
+        '--config',
+        default=None,
+        help="Path to the config file containing the relative intensity thresholds for different MALDI instruments."
+        )
     
     # Dump all args
     for arg in vars(parser.parse_args()):
@@ -289,7 +300,20 @@ def spectrum_iterator(input_data, bin_size, args):
                                                 min_mz=args.mass_range_lower,
                                                 max_mz=args.mass_range_upper,
                                                 merge_replicates="Yes")
-            print("standard spectra_binned_df cols", spectra_binned_df.columns)
+
+            # Load the config
+            relative_intensity=0.0
+            if args.config is not None:
+                logging.info("Loading config file from {}".format(args.config))
+                with open(args.config, "r", encoding='utf-8') as f:
+                    config = yaml.safe_load(f)
+                    relative_intensity = config[args.MALDI_instrument].get("relative_intensity", 0.0)
+                    print("Using relative_intensity", relative_intensity, "for MALDI instrument", args.MALDI_instrument)
+
+                spectra_binned_df = peak_filtering(spectra_binned_df, relative_intensity)
+            else:
+                logging.info("No config file provided, skipping peak filtering step.")
+
             yield input_filename, spectra_binned_df
     elif is_feather:
         df = pd.read_feather(input_data[0])
@@ -316,7 +340,6 @@ def database_search(input_paths, bin_size, database_df,
     iterator = spectrum_iterator(input_paths, bin_size, args)
 
     for input_filename, spectra_binned_df in iterator:
-        print("I am in the iterator")
         # Reading Query
         # ms1_df, _ = load_data(input_filename)
         

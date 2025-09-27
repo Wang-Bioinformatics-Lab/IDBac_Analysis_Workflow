@@ -11,6 +11,7 @@ from utils import write_spectra_df_to_mzML
 from tqdm import tqdm
 import glob
 import logging
+import yaml
 
 def load_data(input_filename):
     try:
@@ -20,16 +21,6 @@ def load_data(input_filename):
     except:
         print(f"Error loading data for {input_filename}, falling back on default")
         logging.debug("Error loading data for {}, falling back on default".format(input_filename))
-
-    MS_precisions = {
-        1: 5e-6,
-        2: 20e-6,
-        3: 20e-6,
-        4: 20e-6,
-        5: 20e-6,
-        6: 20e-6,
-        7: 20e-6
-    }
     
     ms1_df = pd.DataFrame()
     ms2_df = pd.DataFrame()
@@ -38,7 +29,6 @@ def load_data(input_filename):
     all_i = []
     all_scan = []
     
-    # TODO: read the mzML directly
     with mzml.read(input_filename) as reader:
         for spectrum in tqdm(reader):
             try:
@@ -67,7 +57,6 @@ def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
     parser.add_argument('output_folder')
-    parser.add_argument('--merge_replicates', default="No")
     parser.add_argument('--bin_size', default=1.0, type=float)
     parser.add_argument('--mass_range_lower', default=2000.0, type=float, help="Minimum m/z value.")
     parser.add_argument('--mass_range_upper', default=20000.0, type=float, help="Maximum m/z value.")
@@ -78,6 +67,10 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
+
+    # Dump all args to logs
+    for arg in vars(args):
+        logging.debug(f"{arg}: {getattr(args, arg)}")
 
     bin_size = args.bin_size
 
@@ -115,35 +108,34 @@ def main():
 
         bins_to_remove = []
         # merging replicates
-        if args.merge_replicates == "Yes":
-            logging.debug("Merging replicates")
+        logging.debug("Merging replicates")
 
-            # Lets do the merge
-            all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
-            logging.debug("Got {} bins".format(len(all_bins)))
+        # Lets do the merge
+        all_bins = [x for x in spectra_binned_df.columns if x.startswith("BIN_")]
+        logging.debug("Got {} bins".format(len(all_bins)))
 
-            bin_counts = (spectra_binned_df[all_bins] > 0).sum(axis=0)
-            bin_counts.columns = ['bin', 'filename']
-            bin_counts.attrs = {'filename': os.path.basename(input_filename)}
-            bin_counts_list.append(bin_counts)
+        bin_counts = (spectra_binned_df[all_bins] > 0).sum(axis=0)
+        bin_counts.columns = ['bin', 'filename']
+        bin_counts.attrs = {'filename': os.path.basename(input_filename)}
+        bin_counts_list.append(bin_counts)
 
-            for bin in all_bins:
-                all_values = spectra_binned_df[bin]
+        for bin in all_bins:
+            all_values = spectra_binned_df[bin]
 
-                # Count non-zero values
-                non_zero_count = len(all_values[all_values > 0])
+            # Count non-zero values
+            non_zero_count = len(all_values[all_values > 0])
 
-                if non_zero_count == 0:  # Remove bins in which nothing appears
-                    bins_to_remove.append(bin)
+            if non_zero_count == 0:  # Remove bins in which nothing appears
+                bins_to_remove.append(bin)
 
-            # Removing the bins
-            logging.debug("Removing {} bins.".format(len(bins_to_remove)))
-            spectra_binned_df = spectra_binned_df.drop(bins_to_remove, axis=1)
+        # Removing the bins
+        logging.debug("Removing {} bins.".format(len(bins_to_remove)))
+        spectra_binned_df = spectra_binned_df.drop(bins_to_remove, axis=1)
 
-            # Now lets get the mean for each bin
-            spectra_binned_df = spectra_binned_df.drop("scan", axis=1).groupby("filename").mean().reset_index()
-            spectra_binned_df["scan"] = "merged"
-            all_spectra_df_list.append(spectra_binned_df)
+        # Now lets get the mean for each bin
+        spectra_binned_df = spectra_binned_df.drop("scan", axis=1).groupby("filename").mean().reset_index()
+        spectra_binned_df["scan"] = "merged"
+        all_spectra_df_list.append(spectra_binned_df)
 
         # Writing an mzML file with the merged spectra
         output_filename = os.path.join(args.output_folder, os.path.basename(input_filename))

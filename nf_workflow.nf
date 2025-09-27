@@ -14,6 +14,10 @@ params.database_search_mass_range_upper = "20000"
 params.ml_search = "No" // If set to "Yes", it will use the ML database search, otherwise it will use the standard database search
 params.metadata_column = "None"
 
+// Extra peak processing parameters dependent on the MALDI instrument
+params.MALDI_instrument = "general" // Default to general instrument settings
+params.config = "https://idbac.org/analysis-utils/get_instrument_config" // URL or path to config
+
 params.seed_genera = ""
 params.seed_species = ""
 
@@ -156,14 +160,12 @@ process mergeInputSpectra {
     python $TOOL_FOLDER/merge_spectra.py \
     input_spectra \
     merged \
-    --merge_replicates ${params.merge_replicates} \
     --mass_range_lower ${params.database_search_mass_range_lower} \
     --mass_range_upper ${params.database_search_mass_range_upper} \
     --bin_size ${params.heatmap_bin_size} \
     --debug
 
     # Dump merge parameters to a file
-    echo "merge_replicates: ${params.merge_replicates}" > merge_parameters.txt
     echo "mass_range_lower: ${params.database_search_mass_range_lower}" >> merge_parameters.txt
     echo "mass_range_upper: ${params.database_search_mass_range_upper}" >> merge_parameters.txt
     echo "bin_size: ${params.heatmap_bin_size}" >> merge_parameters.txt
@@ -393,6 +395,11 @@ process databaseSearch {
     if [ "${params.ml_search}" == "Yes" ]; then
         ml_flag="--ml"
     fi
+    config_arg=""
+    if [ "${params.config}" != "" ]; then   # TODO: Check if this is a URL or a file path
+        wget --retry-connrefused --waitretry=1 --read-timeout=30 --timeout=30 -t 2 -O instrument_config.yaml ${params.config}
+        config_arg="--config instrument_config.yaml"
+    fi
 
     python $TOOL_FOLDER/database_search.py \
     --input_folder input_spectra \
@@ -411,6 +418,8 @@ process databaseSearch {
     --seed_species "${params.seed_species}" \
     $params.debug_flag \
     \${ml_flag} \
+    --MALDI_instrument "${params.MALDI_instrument}" \
+    \${config_arg}
     """
 }
 

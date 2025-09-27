@@ -1,7 +1,7 @@
 workflowname: idbac_analysis_workflow
 workflowdescription: IDBac-Analysis
 workflowlongdescription: Welcome to the IDBac-Analysis workflow! This workflow processes protein and small molecule MALDI mass spectrometry data for use with IDBac-Analysis, an interactive platform for bacterial identification and metabolite profiling. You can read more about this workflow in the documentation https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbac-brukerstart-here/
-workflowversion: "2025.09.26.00"
+workflowversion: "2025.09.27.00"
 workflowfile: nf_workflow.nf
 workflowautohide: false
 adminonly: false
@@ -121,3 +121,12 @@ parameterlist:
         value-key: "value-key"
         display-key: "display-key"
 
+    - displayname: MALDI Instrument
+      paramtype: select
+      nf_paramname: MALDI_instrument
+      formvalue: general
+      options-from-url:
+        url: https://idbac.org/analysis-utils/get_instrument_options
+        value-key: "value"
+        display-key: "display"
+      tooltip: "Selecting the appropriate instrument will optimize spectrum processing parameters, enabling more accurate IDs."

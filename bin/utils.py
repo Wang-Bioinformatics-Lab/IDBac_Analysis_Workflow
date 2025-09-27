@@ -9,6 +9,9 @@ from psims.mzml.writer import MzMLWriter
 
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 
+import logging
+import yaml
+
 from pathlib import Path
 
 def load_data(input_filename):
@@ -69,6 +72,46 @@ def load_data(input_filename):
         ms1_df['scan'] = all_scan
 
     return ms1_df, ms2_df
+
+def peak_filtering(database_df, relative_intensity):
+    """ Perform any instrument-specific postprocessing on merged spectra. 
+    Current operations include: relative intensity peak filtering based on instrument type.
+    
+    Args:
+    database_df: pd.DataFrame, binned MS1 data
+    relative_intensity: float, relative intensity threshold (between 0 and 1)
+
+    Returns:
+    database_df: pd.DataFrame, filtered binned MS1 data
+    """
+
+    bin_cols = [x for x in database_df.columns if x.startswith("BIN_")]
+
+    if relative_intensity <= 0.0:
+        return database_df
+
+    def _helper(row):
+        """Set all bin_cols to zero if they are below the relative intensity threshold
+        for the given instrument
+
+        Inputs:
+            row: a row of the dataframe
+        Returns:
+            row: the modified row
+        """
+        max_intensity = row[bin_cols].max()
+        if pd.isna(max_intensity) or max_intensity == 0:
+            # If all intensities are zero, do nothing
+            return row
+
+        relative_thresh = max_intensity * relative_intensity
+        row[bin_cols] = row[bin_cols].apply(lambda x: x if x >= relative_thresh else 0)
+
+        return row        
+
+    database_df = database_df.apply(_helper, axis=1)
+
+    return database_df
 
 def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=1.0, min_mz=2000.0, max_mz=20000.0, merge_replicates="No"):
     """
