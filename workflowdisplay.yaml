@@ -116,8 +116,8 @@ Views:
 #             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Mirror - Local</a>
 #         `;}}]'
 
--   name: Database Search Summary
-    displayname: Database Search Summary
+-   name: Knowledgebase Search Summary
+    displayname: Knowledgebase Search Summary
     viewname: dbresults
     displaytype: datatable
     parameters:
@@ -134,11 +134,11 @@ Views:
                 # data: "database_id"
             # -   title: "database_scan"
                 # data: "database_scan"
-            -   title: "Database Strain Name"
+            -   title: "Knowledgebase Strain Name"
                 data: "db_strain_name"
-            -   title: "Database Culture Collection"
+            -   title: "Knowledgebase Culture Collection"
                 data: "db_culture_collection"
-            -   title: "Database Taxonomy"
+            -   title: "Knowledgebase Taxonomy"
                 data: "db_taxonomy"
             -   title: "Distance"
                 data: "distance"

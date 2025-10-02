@@ -78,26 +78,26 @@ parameterlist:
         - value: '10'
           display: "10 Da"
 
-    - displayname: Protein Database Search Mass Range Lower Bound
+    - displayname: Protein Knowledgebase Search Mass Range Lower Bound
       paramtype: text
       nf_paramname: database_search_mass_range_lower
-      formplaceholder: Enter the Database Search Mass Range
+      formplaceholder: Enter the Knowledgebase Search Mass Range
       formvalue: "3000"
-      tooltip: "The lower bound of m/z values when comparing protein spectra to the database."
+      tooltip: "The lower bound of m/z values when comparing protein spectra to the knowledgebase."
 
-    - displayname: Protein Database Search Mass Range Upper Bound
+    - displayname: Protein Knowledgebase Search Mass Range Upper Bound
       paramtype: text
       nf_paramname: database_search_mass_range_upper
-      formplaceholder: Enter the Database Search Mass Range
+      formplaceholder: Enter the Knowledgebase Search Mass Range
       formvalue: "20000"
-      tooltip: "The upper bound of m/z values when comparing protein spectra to the database."
+      tooltip: "The upper bound of m/z values when comparing protein spectra to the knowledgebase."
 
-    - displayname: Protein Database Search Distance Threshold
+    - displayname: Protein Knowledgebase Search Distance Threshold
       paramtype: text
       nf_paramname: database_search_threshold
-      formplaceholder: Enter the Database Search Distance Threshold
+      formplaceholder: Enter the Knowledgebase Search Distance Threshold
       formvalue: "0.5"
-      tooltip: "The maximumum distance threshold for a protein to be considered a match to the database."
+      tooltip: "The maximumum distance threshold for a protein to be considered a match to the knowledgebase."
 
     - displayname: Seed Genera
       paramtype: select # select_checkbox # <-- should be used when a dropdown is implemented
