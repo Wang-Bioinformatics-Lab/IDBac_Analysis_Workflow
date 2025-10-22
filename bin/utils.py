@@ -9,6 +9,8 @@ from psims.mzml.writer import MzMLWriter
 
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
 
+import numba as nb
+
 import logging
 import yaml
 
@@ -170,24 +172,77 @@ def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=1.0, min_m
     
     return spectra_binned_df
 
-def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, distance_metric:str='cosine'):
-    
-    if distance_metric not in ['cosine', 'euclidean', 'presence']:
-        raise ValueError(f'Invalid distance metric. Expected "cosine", "euclidean", or "presence", but got {distance_metric}')
-    
-    if distance_metric == "cosine":
-        selected_distance_fun = cosine_distances
-    elif distance_metric == "euclidean":
-        selected_distance_fun = euclidean_distances
-    elif distance_metric == "presence":
-        selected_distance_fun = cosine_distances
+@nb.njit(fastmath=True)
+def _reverse_cosine_value(q, r, q_norm, r_norm, penalty):
+    """Compute a single reverse cosine similarity with penalty."""
+    # Apply penalty where ref ≈ 0
+    q_mod = np.where(r <= 1e-6, q * (1 - penalty), q)
+    dot = np.dot(q_mod, r)
+    denom = q_norm * r_norm
+    if denom > 0.0:
+        return dot / denom
+    return 0.0
+
+
+@nb.njit(parallel=True, fastmath=True)
+def _pairwise_metric(qry, ref, metric, penalty=0.0):
+    """Compute a full pairwise similarity matrix using a given metric."""
+    n_q, n_r = qry.shape[0], ref.shape[0]
+    result = np.empty((n_q, n_r), dtype=np.float32)
+
+    qry_norms = np.sqrt(np.sum(qry * qry, axis=1))
+    ref_norms = np.sqrt(np.sum(ref * ref, axis=1))
+
+    for i in nb.prange(n_q):
+        for j in range(n_r):    # TODO: Potentially optimize to avoid redundant computations
+            result[i, j] = metric(
+                qry[i], ref[j], qry_norms[i], ref_norms[j], penalty
+            )
+
+    return result
+
+def reverse_cosine_distances(np_data_qry, np_data_ref=None, penalty=0.0):
+    """Compute all-pairs reverse cosine similarity matrix."""
+    if np_data_ref is None:
+        np_data_ref = np_data_qry
+    return _pairwise_metric(np_data_qry, np_data_ref, _reverse_cosine_value, penalty)
+
+
+def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, distance_metric:str='cosine', penalty:float=0.0):
+
+    if distance_metric not in [
+        "cosine", "reverse_cosine",
+        "euclidean", "presence", "reverse_presence"
+    ]:
+        raise ValueError(
+            f'Invalid distance metric: "{distance_metric}". '
+            f'Expected one of cosine, reverse_cosine, euclidean, presence, reverse_presence.'
+        )
+
+    if distance_metric not in {
+        "cosine", "presence", "euclidean"
+    } and penalty != 0.0:
+        logging.warning(
+            f'Penalty parameter is only used with "reverse_cosine" and "reverse_presence" distance metrics. '
+            f'Ignoring penalty={penalty} with distance_metric="{distance_metric}".'
+        )
+
+    if "presence" in distance_metric:
         np_data_X[np_data_X > 0] = 1
         if np_data_Y is not None:
             np_data_Y[np_data_Y > 0] = 1
-            
+    
+    if distance_metric in {"cosine", "presence"}:
+        selected_fun = cosine_distances
+        result = selected_fun(np_data_X, np_data_Y)
+    elif distance_metric == "euclidean":
+        selected_fun = euclidean_distances
+        result = selected_fun(np_data_X, np_data_Y)
+    elif distance_metric in {"reverse_cosine", "reverse_presence"}:
+        selected_fun = reverse_cosine_distances
+        result = selected_fun(np_data_X, np_data_Y, penalty=penalty)
         
-    return selected_distance_fun(np_data_X, np_data_Y)
-
+    return result
 
 def load_metadata_file(metadata_path:str):
     """
