@@ -30,23 +30,9 @@ params.debug_flag = "" // Should be set to either "--debug" or ""
 TOOL_FOLDER = "$baseDir/bin"
 
 
-include { data_preparation as data_preparation } from "$baseDir/bin/workflows/data_preparation.nf"  addParams(output_dir: "./nf_output/data_preparation")
+include { data_prep as data_prep } from "$baseDir/bin/workflows/data_preparation.nf"  addParams(output_dir: "./nf_output/data_preparation")
+include { small_mol as small_mol } from "$baseDir/bin/workflows/small_molecule.nf"  addParams(output_dir: "./nf_output/small_molecule")
 include { MLInferenceRawVectorsWorkflow as MLInferenceRawVectorsWorkflow } from "$baseDir/bin/ml_inference/ml_inference.nf"  addParams(output_dir: "./nf_output/ml_inference")
-
-// Does some basic sanity checks on the metadata file
-process metadataValidation {
-    conda "$TOOL_FOLDER/conda_env.yml"
-
-    cpus 2
-    memory '8 GB'
-
-    input:
-    file metadata_file
-
-    """
-    python3 $TOOL_FOLDER/metadata_validation.py --metadata_table $metadata_file
-    """
-}
 
 // Optionally merges all spectra within the same file
 // Note: This is only used for plotting, the outputs are not used for database search
@@ -85,98 +71,6 @@ process mergeInputSpectra {
     echo "mass_range_upper: ${params.database_search_mass_range_upper}" >> merge_parameters.txt
     echo "bin_size: ${params.heatmap_bin_size}" >> merge_parameters.txt
     """
-}
-
-process baselineCorrectionSmallMolecule {
-    publishDir "./nf_output/small_molecule/baseline_corrected", mode: 'copy'
-
-    cpus 2
-    memory '20 GB'
-
-    conda "$TOOL_FOLDER/conda_maldiquant.yml"
-
-    errorStrategy 'ignore'
-
-    input:
-    file input_file 
-
-    output:
-    file 'baselinecorrected/*.mzML'
-
-    """
-    mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrectionSM.R $input_file "baselinecorrected/${input_file.fileName}"
-    """
-}
-
-process baselineCorrectionBlank {
-    publishDir "./nf_output/small_molecule/baseline_corrected_blank", mode: 'copy'
-    conda "$TOOL_FOLDER/conda_maldiquant.yml"
-
-    cpus 2
-    memory '20 GB'
-
-    errorStrategy 'ignore'
-
-    input:
-    file input_file
-
-    output:
-    file 'baselinecorrected/*.mzML'
-    """
-    mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrectionSM.R $input_file baselinecorrected/$input_file
-    """
-}
-
-process small_molecule_media_control {
-    publishDir "./nf_output/small_molecule/media_control", mode: 'copy'
-    cache true
-    conda "$TOOL_FOLDER/conda_env.yml"
-
-    cpus 2
-    memory '8 GB'
-
-    input:
-    each small_molecule_file
-    file metadata_file
-    path media_control_dir, stageAs: "media_control_dir/*"
-
-    output:
-    file 'media_controled/*.mzML'
-
-    """
-    mkdir media_control
-    python $TOOL_FOLDER/media_control.py \
-        --small_molecule_file "${small_molecule_file}" \
-        --metadata_file $metadata_file \
-        --media_control_dir media_control_dir \
-        --output_file "media_controled/${small_molecule_file.fileName}"
-    """
-}
-
-process summarizeSmallMolecule {
-    publishDir "./nf_output/small_molecule/", mode: 'copy'
-
-    cache true
-
-    cpus 2
-    memory '8 GB'
-
-    conda "$TOOL_FOLDER/conda_env.yml"
-
-    input:
-    file "input_spectra/*"
-
-    output:
-    file 'summary.json'
-
-    """
-    python $TOOL_FOLDER/summarize_small_molecule.py \
-    --input_folder "input_spectra" \
-    --output_file "summary.json"
-    """
-
 }
 
 
@@ -414,35 +308,29 @@ process summarizeSpectra{
 
 workflow {
     // ----------- General data preparation & sanity checks ----------- 
-    data_preparation(
+    data_prep(
         params.input_spectra_folder,
         params.input_small_molecule_folder,
         params.input_media_control_folder,
         params.input_metadata_file
     )
 
-    input_mzml_files_ch         = data_preparation.out.input_mzml_files_ch
-    baseline_query_spectra_ch   = data_preparation.out.baseline_query_spectra_ch
-    small_mol_ch                = data_preparation.out.small_mol_ch
-    blank_channel               = data_preparation.out.blank_channel
-    metadata_file_ch            = data_preparation.out.metadata_file_ch
-    formatted_metadata_ch       = data_preparation.out.formatted_metadata_ch
+    input_mzml_files_ch         = data_prep.out.input_mzml_files_ch
+    baseline_query_spectra_ch   = data_prep.out.baseline_query_spectra_ch
+    small_mol_ch                = data_prep.out.small_mol_ch
+    blank_channel               = data_prep.out.blank_channel
+    metadata_file_ch            = data_prep.out.metadata_file_ch
+    formatted_metadata_ch       = data_prep.out.formatted_metadata_ch
 
 
-    // Summarizing small molecules
-    if (params.input_small_molecule_folder != "") {
-        baseline_corrected_small_molecule = baselineCorrectionSmallMolecule(small_mol_ch)
-        if (params.input_media_control_folder != "" && params.input_metadata_file != "") {
-            baseline_corrected_blank = baselineCorrectionBlank(blank_channel)
-            baseline_corrected_small_molecule = small_molecule_media_control(baseline_corrected_small_molecule, Channel.fromPath(params.input_metadata_file), baseline_corrected_blank.collect())
-        } else{
-            if (params.input_media_control_folder != "") {
-                error "An input metadata file is required for media control"
-            }
-        }
-        summarizeSmallMolecule(baseline_corrected_small_molecule.collect())
-    }
-
+    // ----------- Small Molecule Processing -----------
+    small_mol(
+        small_mol_ch,
+        blank_channel,
+        params.input_media_control_folder,
+        params.input_metadata_file
+    )
+    
     // Doing merging of spectra
     (merged_spectra_ch, merge_params, count_tables, replicate_counts) = mergeInputSpectra(baseline_query_spectra_ch.collect())
 

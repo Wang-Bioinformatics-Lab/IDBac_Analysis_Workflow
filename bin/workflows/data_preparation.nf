@@ -3,6 +3,21 @@ nextflow.enable.dsl=2
 
 TOOL_FOLDER = "$baseDir/bin"
 
+// Does some basic sanity checks on the metadata file
+process metadataValidation {
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    cpus 2
+    memory '8 GB'
+
+    input:
+    file metadata_file
+
+    """
+    python3 $TOOL_FOLDER/metadata_validation.py --metadata_table $metadata_file
+    """
+}
+
 /* 
  * Simple sanity checks on mzML files that we can warn the users about
  * 1. Ensure each files has scans
@@ -113,7 +128,7 @@ process formatMetadata {
     """
 }
 
-workflow data_preparation {
+workflow data_prep {
     take:
     input_spectra_folder
     input_small_molecule_folder
