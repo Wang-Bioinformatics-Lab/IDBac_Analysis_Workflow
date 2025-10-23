@@ -178,6 +178,10 @@ def _reverse_cosine_value(q, r, r_norm, penalty):
     q_mod = np.where(r == 0.0, q * penalty, q)
     q_mod_norm = np.sqrt(np.sum(q_mod * q_mod))
 
+    # Cast to float32
+    q_mod = q_mod.astype(np.float32)
+    r = r.astype(np.float32)
+
     dot = np.dot(q_mod, r)
     denom = q_mod_norm * r_norm
     if denom > 0.0:
