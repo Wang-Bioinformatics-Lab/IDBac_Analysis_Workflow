@@ -284,11 +284,10 @@ workflow protein {
     baseline_query_spectra_ch
     input_mzml_files_ch
     input_metadata_file
-    formatted_metadata_ch
     search_args
 
     main:
-    // Merge already baseline and peak picked spectra
+    // Merge already baseline corrected and peak picked spectra
     (
         merged_spectra_ch,
         merge_params,
@@ -332,7 +331,7 @@ workflow protein {
         search_args
     )
 
-    // Enriching database search results
+    // Enriching database search results with metadata
     db_summary = downloadDatabaseSummary()
     enriched_core_results_db_ch     = enrichCoreDatabaseSearch(
                                         core_search_results_ch,

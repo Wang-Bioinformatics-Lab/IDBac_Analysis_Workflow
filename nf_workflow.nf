@@ -78,7 +78,6 @@ workflow {
         baseline_query_spectra_ch,
         input_mzml_files_ch,
         params.input_metadata_file,
-        formatted_metadata_ch,
         search_args,
     )
 
