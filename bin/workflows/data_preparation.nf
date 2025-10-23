@@ -85,7 +85,7 @@ process mergeForPlotting {
 }
 
 // Preprocess with MaldiQuant: Sqrt, Smoothing, Baseline Correction, Peak Detection
-process baselineCorrection {
+process baseline {
     publishDir "./nf_output", mode: 'copy'
 
     conda "$TOOL_FOLDER/conda_maldiquant.yml"
@@ -167,7 +167,7 @@ workflow data_prep {
     mergeForPlotting(input_mzml_files_ch)
 
     // Doing baseline correction on main query spectra
-    baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
+    baseline_query_spectra_ch = baseline(input_mzml_files_ch)
 
     // Format the metadata for the main analysis
     formatted_metadata_ch = formatMetadata(metadata_file_ch)
