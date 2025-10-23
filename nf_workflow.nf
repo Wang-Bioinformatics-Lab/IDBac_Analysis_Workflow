@@ -1,30 +1,31 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl=2
 
-params.input_spectra_folder = ""
-params.input_small_molecule_folder = ""
-params.input_media_control_folder = ""
-params.input_metadata_file = "NO_FILE"
+params.input_spectra_folder             = ""
+params.input_small_molecule_folder      = ""
+params.input_media_control_folder       = ""
+params.input_metadata_file              = "NO_FILE"
 
-params.merge_replicates = "Yes"
-params.distance = "cosine"
-params.database_search_threshold = "0.7"
-params.database_search_mass_range_lower = "2000"
+params.merge_replicates                 = "Yes"     // Unused TODO: Remove
+params.distance                         = "cosine"  // Options: "cosine", "euclidean", "presence", "reverse_cosine", "reverse_presence"
+params.unmatched_peak_penalty           = 0.0       // Only used for "reverse_cosine" and "reverse_presence" distance metrics
+params.database_search_threshold        = "0.7"
+params.database_search_mass_range_lower = "3000"
 params.database_search_mass_range_upper = "20000"
-params.ml_search = "No" // If set to "Yes", it will use the ML database search, otherwise it will use the standard database search
-params.metadata_column = "None"
+params.ml_search                        = "No"      // If set to "Yes", it will use the ML database search, otherwise it will use the standard database search
+params.metadata_column                  = "None"
 
 // Extra peak processing parameters dependent on the MALDI instrument
 params.MALDI_instrument = "general" // Default to general instrument settings
 params.config = "https://idbac.org/analysis-utils/get_instrument_config" // URL or path to config
 
-params.seed_genera = ""
-params.seed_species = ""
+params.seed_genera      = ""
+params.seed_species     = ""
 
 params.heatmap_bin_size = 10  // Heatmaps use 1.0 Da bins by default
 params.search_bin_size  = 10  // Database search uses 10.0 Da bins by default
 
-params.debug_flag = "--debug" // Should be set to either "--debug" or ""
+params.debug_flag = "" // Should be set to either "--debug" or ""
 
 TOOL_FOLDER = "$baseDir/bin"
 
@@ -384,10 +385,10 @@ process databaseSearch {
     file "input_spectra/*"
 
     output:
-    file 'db_results.tsv'               // Distance between query spectra and database hits
-    file 'db_db_distance.tsv'           // Distance between database hits
-    file 'complete_output_results.tsv'  // Output results with metadata
-    file 'query_query_distances.tsv'      // Distance between query spectra
+    file 'db_results.tsv'                       // Distance between query spectra and database hits
+    path 'db_db_distance.tsv', optional: true   // Distance between database hits
+    file 'complete_output_results.tsv'          // Output results with metadata
+    file 'query_query_distances.tsv'            // Distance between query spectra
     file 'query_spectra/*.mzML'
 
     """
@@ -413,6 +414,7 @@ process databaseSearch {
     --mass_range_lower ${params.database_search_mass_range_lower} \
     --mass_range_upper ${params.database_search_mass_range_upper} \
     --distance ${params.distance} \
+    --unmatched_peak_penalty ${params.unmatched_peak_penalty} \
     --bin_size ${params.search_bin_size} \
     --seed_genera "${params.seed_genera}" \
     --seed_species "${params.seed_species}" \
@@ -420,6 +422,12 @@ process databaseSearch {
     \${ml_flag} \
     --MALDI_instrument "${params.MALDI_instrument}" \
     \${config_arg}
+
+    # Manually check that db_db_distance.tsv exists, if distance is not reverse_*, since those do not produce db_db_distance.tsv
+    if [ "${params.distance}" != "reverse_cosine" ] && [ "${params.distance}" != "reverse_presence" ] && [ ! -f db_db_distance.tsv ]; then
+        echo "Error: db_db_distance.tsv was not created despite distance metric being set to '${params.distance}' which should produce this file." >&2
+        exit 1
+    fi
     """
 }
 
@@ -587,12 +595,6 @@ workflow {
     } else {
         metadata_file_ch = Channel.fromPath("None")
     }
-
-    // If we have query spectra, we can create a dendrogram, otherwise we can't
-
-    // collected_query_spectra = baseline_query_spectra_ch.collect()
-    // baseline_query_spectra_ch.view()
-    // baseline_query_spectra_ch = Channel.empty()
     
     // Logic to spoof outputs if no query spectra are present after merging
     collected = baseline_query_spectra_ch.collect()
@@ -600,11 +602,6 @@ workflow {
     enriched_core_results_db_ch = enriched_core_results_db_ch.collect()
     enriched_results = enriched_core_results_db_ch.ifEmpty(file("No_Enriched_Results"))
 
-    // new_collected.view()
-    // metadata_file_ch.view()
-    // enriched_results.view()
-    
     createDendrogram(new_collected, metadata_file_ch, enriched_results)
-
 
 }

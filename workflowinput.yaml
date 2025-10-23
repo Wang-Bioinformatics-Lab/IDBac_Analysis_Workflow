@@ -65,17 +65,28 @@ parameterlist:
           display: "Cosine"
         - value: "euclidean"
           display: "Euclidean"
+        - value: "reverse_cosine"
+          display: "Reverse Cosine"
+        - value: "reverse_presence"
+          display: "Reverse Presence"
+
+    - displayname: Unmatched Peak Penalty
+      paramtype: text
+      nf_paramname: unmatched_peak_penalty
+      formplaceholder: Enter the unmatched peak penalty
+      formvalue: "1.0"
+      tooltip: "Penalty applied for each unmatched peak when calculating distances between spectra. Only used for reverse cosine and reverse presence distance metrics. Higher penalty means unmatched peaks contribute more to the distance."
 
     - displayname: Similarity Calculation Bin Size (Da)
       paramtype: select
       nf_paramname: search_bin_size
-      formvalue: '10'
+      formvalue: "10"
       options:
-        - value: '1'
+        - value: "1"
           display: "1 Da"
-        - value: '5'
+        - value: "5"
           display: "5 Da"
-        - value: '10'
+        - value: "10"
           display: "10 Da"
 
     - displayname: Protein Knowledgebase Search Mass Range Lower Bound

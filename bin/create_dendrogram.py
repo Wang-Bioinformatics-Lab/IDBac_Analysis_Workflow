@@ -121,11 +121,11 @@ def main():
     import plotly.figure_factory as ff
 
     from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
-    if args.distance == "cosine":
+    if args.distance in {"cosine", "reverse_cosine"}:
         selected_distance_fun = cosine_distances
     elif args.distance == "euclidean":
         selected_distance_fun = euclidean_distances
-    elif args.distance == "presence":
+    elif args.distance in {"presence", "reverse_presence"}:
         selected_distance_fun = cosine_distances
         data_np[data_np > 0] = 1
 
