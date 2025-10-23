@@ -3,7 +3,7 @@ nextflow.enable.dsl=2
 
 TOOL_FOLDER = "$baseDir/bin"
 
-process baselineCorrectionSmallMolecule {
+process baseline {
     publishDir "./nf_output/small_molecule/baseline_corrected", mode: 'copy'
 
     cpus 2
@@ -25,7 +25,7 @@ process baselineCorrectionSmallMolecule {
     """
 }
 
-process summarizeSmallMolecule {
+process summarize {
     publishDir "./nf_output/small_molecule/", mode: 'copy'
 
     cache true
@@ -49,7 +49,7 @@ process summarizeSmallMolecule {
 
 }
 
-process baselineCorrectionBlank {
+process baseline_blank {
     publishDir "./nf_output/small_molecule/baseline_corrected_blank", mode: 'copy'
     conda "$TOOL_FOLDER/conda_maldiquant.yml"
 
@@ -69,7 +69,7 @@ process baselineCorrectionBlank {
     """
 }
 
-process small_molecule_media_control {
+process media_control {
     publishDir "./nf_output/small_molecule/media_control", mode: 'copy'
     cache true
     conda "$TOOL_FOLDER/conda_env.yml"
@@ -104,7 +104,7 @@ workflow small_mol {
     input_metadata_file         // Metadata file associated small molecule files with blank files
 
     main:
-    baseline_corrected_small_molecule = baselineCorrectionSmallMolecule(small_mol_ch)
+    baseline_corrected_small_molecule = baseline(small_mol_ch)
 
     // Conditional Media Control Correction
     if (input_media_control_folder != "" && input_metadata_file != "NO_FILE" && input_metadata_file != "") {
@@ -114,19 +114,19 @@ workflow small_mol {
              error "An input metadata file is required for media control"
         }
 
-        baseline_corrected_blank = baselineCorrectionBlank(blank_channel)
+        baseline_corrected_blank = baseline_blank(blank_channel)
         
         // Metadata is guaranteed to be present here based on the if condition
         metadata_file_ch_small_mol = Channel.fromPath(input_metadata_file) 
         
-        baseline_corrected_small_molecule = small_molecule_media_control(
+        baseline_corrected_small_molecule = media_control(
             baseline_corrected_small_molecule, 
             metadata_file_ch_small_mol, 
             baseline_corrected_blank.collect()
         )
     }
 
-    summarizeSmallMolecule(baseline_corrected_small_molecule.collect())
+    summarize(baseline_corrected_small_molecule.collect())
 
     // Nothing to emit
 }
