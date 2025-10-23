@@ -29,29 +29,9 @@ params.debug_flag = "" // Should be set to either "--debug" or ""
 
 TOOL_FOLDER = "$baseDir/bin"
 
+
+include { data_preparation as data_preparation } from "$baseDir/bin/workflows/data_preparation.nf"  addParams(output_dir: "./nf_output/data_preparation")
 include { MLInferenceRawVectorsWorkflow as MLInferenceRawVectorsWorkflow } from "$baseDir/bin/ml_inference/ml_inference.nf"  addParams(output_dir: "./nf_output/ml_inference")
-
-/* Simple sanity checks on mzML files that we can warn the users about
- * 1. Ensure each files has scans
- * 2. Ensure each scan has peaks with non-zero intensities (this tend to be a common issue with MALDI data)
- */
-process preFlightCheck {
-    conda "$TOOL_FOLDER/conda_env.yml"
-
-    cpus 2
-    memory '8 GB'
-
-    input:
-    each file(input_file )
-
-    output:
-    path('errors.csv'), optional: true
-
-    """
-    python3 $TOOL_FOLDER/test_inputs.py --input_file $input_file \
-                                        --output_file errors.csv
-    """
-}
 
 // Does some basic sanity checks on the metadata file
 process metadataValidation {
@@ -65,72 +45,6 @@ process metadataValidation {
 
     """
     python3 $TOOL_FOLDER/metadata_validation.py --metadata_table $metadata_file
-    """
-}
-
-// This process outputs all of the errors from preFlightCheck to nf_output
-process outputErrors {
-    publishDir "./nf_output", mode: 'copy'
-
-    cpus 2
-    memory '8 GB'
-
-    input:
-    path input_files, stageAs: 'input_files/errors_*.csv'
-
-    output:
-    file 'errors.csv'
-
-    """
-    cat $input_files > errors.csv
-    sed -i 1i"Error_Level,Scan,Filename,Error" errors.csv   # Add headers (since we are concatenating multiple files)
-    """
-}
-
-process mergeForPlotting {
-    publishDir "./nf_output", mode: 'copy'
-
-    conda "$TOOL_FOLDER/conda_env.yml"
-
-    cpus 2
-    memory '20 GB'
-    cache false
-
-    errorStrategy 'ignore'
-
-    input:
-    file input_file
-
-    output:
-    path 'raw_merged_for_plotting/*.mzML'
-
-    """
-    mkdir -p raw_merged_for_plotting
-    python3 $TOOL_FOLDER/raw_merge.py \
-        --input_file $input_file \
-        --output_folder raw_merged_for_plotting \
-    """
-}
-
-process baselineCorrection {
-    publishDir "./nf_output", mode: 'copy'
-
-    conda "$TOOL_FOLDER/conda_maldiquant.yml"
-
-    cpus 2
-    memory '20 GB'
-
-    errorStrategy 'ignore'
-
-    input:
-    file input_file 
-
-    output:
-    path 'baselinecorrected/*.mzML'
-
-    """
-    mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrection.R $input_file baselinecorrected/${input_file}
     """
 }
 
@@ -265,26 +179,6 @@ process summarizeSmallMolecule {
 
 }
 
-process formatMetadata {
-    publishDir "./nf_output", mode: 'copy'
-
-    conda "$TOOL_FOLDER/conda_env.yml"
-
-    cpus 2
-    memory '8 GB'
-
-    input:
-    file metadata_file
-
-    output:
-    file 'output_histogram_data_directory/metadata.tsv'
-
-    """
-    python $TOOL_FOLDER/format_metadata.py \
-    --output_histogram_data_directory "output_histogram_data_directory" \
-    --metadata_path ${metadata_file}
-    """
-}
 
 process createDendrogram {
     publishDir "./nf_output", mode: 'copy'
@@ -519,27 +413,21 @@ process summarizeSpectra{
 }
 
 workflow {
-    input_mzml_files_ch = Channel.fromPath(params.input_spectra_folder + "/*.mzML")
+    // ----------- General data preparation & sanity checks ----------- 
+    data_preparation(
+        params.input_spectra_folder,
+        params.input_small_molecule_folder,
+        params.input_media_control_folder,
+        params.input_metadata_file
+    )
 
-    // Pre-flight check
-    pre_flight_ch = input_mzml_files_ch
-    if (params.input_small_molecule_folder != "") {
-        small_mol_ch = Channel.fromPath(params.input_small_molecule_folder + "/*.mzML")
-        pre_flight_ch = pre_flight_ch.concat(small_mol_ch)
-    }
-    if (params.input_media_control_folder != "") {
-        blank_channel = Channel.fromPath(params.input_media_control_folder + "/*.mzML")
-        pre_flight_ch = pre_flight_ch.concat(blank_channel)
-    }
-    if (params.input_metadata_file != "NO_FILE") {
-        metadata_file_ch = Channel.fromPath(params.input_metadata_file)
-        metadataValidation(metadata_file_ch)
-    } else {
-        metadata_file_ch = channel.empty()
-    }
+    input_mzml_files_ch         = data_preparation.out.input_mzml_files_ch
+    baseline_query_spectra_ch   = data_preparation.out.baseline_query_spectra_ch
+    small_mol_ch                = data_preparation.out.small_mol_ch
+    blank_channel               = data_preparation.out.blank_channel
+    metadata_file_ch            = data_preparation.out.metadata_file_ch
+    formatted_metadata_ch       = data_preparation.out.formatted_metadata_ch
 
-    preFlightFailures = preFlightCheck(pre_flight_ch)
-    outputErrors(preFlightFailures.collect())
 
     // Summarizing small molecules
     if (params.input_small_molecule_folder != "") {
@@ -554,13 +442,6 @@ workflow {
         }
         summarizeSmallMolecule(baseline_corrected_small_molecule.collect())
     }
-
-    // Do a direct merge of protein spectra for downstream plotting
-    mergeForPlotting(input_mzml_files_ch)
-
-    // Doing baseline correction
-    // baseline_query_spectra_ch = Channel.empty()
-    baseline_query_spectra_ch = baselineCorrection(input_mzml_files_ch)
 
     // Doing merging of spectra
     (merged_spectra_ch, merge_params, count_tables, replicate_counts) = mergeInputSpectra(baseline_query_spectra_ch.collect())
@@ -585,9 +466,6 @@ workflow {
     db_summary = downloadDatabaseSummary()
     enriched_core_results_db_ch     = enrichCoreDatabaseSearch(core_search_results_ch, db_summary)
     enriched_complete_results_db_ch = enrichCompleteDatabaseSearch(complete_search_results_ch, db_summary)
-
-    // Format the metadata
-    formatted_metadata_ch = formatMetadata(metadata_file_ch)
 
     // Creating Spectra Dendrogram
     if (params.input_metadata_file != "") {
