@@ -65,10 +65,10 @@ parameterlist:
           display: "Cosine"
         - value: "euclidean"
           display: "Euclidean"
-        - value: "reverse_cosine"
-          display: "Reverse Cosine"
-        - value: "reverse_presence"
-          display: "Reverse Presence"
+        # - value: "reverse_cosine"
+        #   display: "Reverse Cosine"
+        # - value: "reverse_presence"
+        #   display: "Reverse Presence"
 
     - displayname: Unmatched Peak Penalty
       paramtype: text
