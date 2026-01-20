@@ -107,18 +107,19 @@ workflow small_mol {
     baseline_corrected_small_molecule = baseline(small_mol_ch)
 
     // Let's do some basic sanity checking to provide users friendly errors
-    if (input_media_control_folder != "" && (input_metadata_file == "NO_FILE" || input_metadata_file == "")) {
+    if ((input_media_control_folder != "" && input_media_control_folder != "NO_FILE") && (input_metadata_file == "NO_FILE" || input_metadata_file == "")) {
          error "An input metadata file is required for media control"
     }
-    if (input_media_control_folder != "" && blank_channel.size() == 0) {
-         error "No blank files found in the provided media control folder: ${input_media_control_folder}"
-    }
+    // Requires newer nextflow version than prod:
+    // if (input_media_control_folder != ""&& blank_channel.size() == 0)  {
+    //      error "No blank files found in the provided media control folder: ${input_media_control_folder}"
+    // }
 
     // Conditional Media Control Correction
     if (input_media_control_folder != "" && input_metadata_file != "NO_FILE" && input_metadata_file != "") {
         
         // Check for required metadata when media control is present
-        if (input_media_control_folder != "" && (input_metadata_file == "NO_FILE" || input_metadata_file == "")) {
+        if ((input_media_control_folder != "" && input_media_control_folder != "NO_FILE") && (input_metadata_file == "NO_FILE" || input_metadata_file == "")) {
              error "An input metadata file is required for media control"
         }
 

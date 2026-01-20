@@ -1,4 +1,10 @@
 #!/usr/bin/env nextflow
+
+/************
+Note: this file exists to support experiments with preprocessed data.
+Namely, the reverse search of mixed spectra where the query spectra were preprocessed and then mixed.
+************/
+
 nextflow.enable.dsl=2
 
 // Only new arg for this entrypoint:
