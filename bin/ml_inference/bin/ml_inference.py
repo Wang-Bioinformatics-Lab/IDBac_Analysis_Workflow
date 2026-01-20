@@ -12,7 +12,7 @@ from custom_transforms import SquareRootTransform, SelectTopKPeaks, BinarizeInte
 trans = transforms.Compose([
     SquareRootTransform(),
     SelectTopKPeaks(150),
-    BinarizeIntensity(), # *************
+    BinarizeIntensity(),  # *************
     NormalizeIntensity(),
     PadToLength(150, padding_value=-1.0),
 ])
@@ -31,7 +31,10 @@ def run_inference(ml_data_directory: Path, output_file: Path, session: ort.Infer
 
         transformed = trans(Tensor(data).T).unsqueeze(0).numpy().astype(np.float32)
 
-        outputs[db_id] = session.run(None, {session.get_inputs()[0].name: transformed})[0].squeeze().tolist()
+        # Add a .mzML to keep consistent naming with original input_files
+        output_name = f"{db_id}.mzML"
+
+        outputs[output_name] = session.run(None, {session.get_inputs()[0].name: transformed})[0].squeeze().tolist()
 
 
     print(outputs)

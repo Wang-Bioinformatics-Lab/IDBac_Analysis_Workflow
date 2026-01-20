@@ -1,7 +1,7 @@
 workflowname: idbac_analysis_workflow
 workflowdescription: IDBac-Analysis
 workflowlongdescription: Welcome to the IDBac-Analysis workflow! This workflow processes protein and small molecule MALDI mass spectrometry data for use with IDBac-Analysis, an interactive platform for bacterial identification and metabolite profiling. You can read more about this workflow in the documentation https://wang-bioinformatics-lab.github.io/GNPS2_Documentation/idbac-brukerstart-here/
-workflowversion: "2025.09.27.00"
+workflowversion: "2025.11.04.00"
 workflowfile: nf_workflow.nf
 workflowautohide: false
 adminonly: false
@@ -57,7 +57,7 @@ parameterlist:
     - displayname: Distance Metric
       paramtype: select
       nf_paramname: distance
-      formvalue: "cosine"
+      formvalue: "presence"
       options:
         - value: "presence"
           display: "Presence"
@@ -70,12 +70,23 @@ parameterlist:
         # - value: "reverse_presence"
         #   display: "Reverse Presence"
 
-    - displayname: Unmatched Peak Penalty
-      paramtype: text
-      nf_paramname: unmatched_peak_penalty
-      formplaceholder: Enter the unmatched peak penalty
-      formvalue: "1.0"
-      tooltip: "Penalty applied for each unmatched peak when calculating distances between spectra. Only used for reverse cosine and reverse presence distance metrics. Higher penalty means unmatched peaks contribute more to the distance."
+    - displayname: Use ML-based Spectral Search (Beta)
+      paramtype: select
+      nf_paramname: ml_search
+      formvalue: "No"
+      options:
+        - value: "Yes"
+          display: "Yes"
+        - value: "No"
+          display: "No"
+      tooltip: "If 'Yes', protein spectra will be compared to a machine learning model trained on a large set of known bacterial spectra to improve identification accuracy. Above 'Distance Metric' will be ignored, and small molecule is not supported."
+
+    # - displayname: Unmatched Peak Penalty
+    #   paramtype: text
+    #   nf_paramname: unmatched_peak_penalty
+    #   formplaceholder: Enter the unmatched peak penalty
+    #   formvalue: "1.0"
+    #   tooltip: "Penalty applied for each unmatched peak when calculating distances between spectra. Only used for reverse cosine and reverse presence distance metrics. Higher penalty means unmatched peaks contribute more to the distance."
 
     - displayname: Similarity Calculation Bin Size (Da)
       paramtype: select
@@ -107,7 +118,7 @@ parameterlist:
       paramtype: text
       nf_paramname: database_search_threshold
       formplaceholder: Enter the Knowledgebase Search Distance Threshold
-      formvalue: "0.5"
+      formvalue: "0.65"
       tooltip: "The maximumum distance threshold for a protein to be considered a match to the knowledgebase."
 
     - displayname: Seed Genera
