@@ -5,6 +5,7 @@ import numpy as np
 from pyteomics import mzml
 import csv
 import re
+import logging
 
 
 def find_integer_at_end(string):
@@ -45,6 +46,9 @@ def validate_file(input_file:str, output_file:str)->int:
                                             'error': f"Scan {scan['id']} is missing intensity array"})
                     output_status = 1
                     scan_status[scan_idx] = True
+                    logging.info(f"The following scan is missing intensity array: {scan['id']}")
+                    logging.info(str(scan))
+
                 if len(scan['intensity array']) == 0:
                     output_writer.writerow({'error_level': 'warning',
                                             'scan': find_integer_at_end(scan['id']),
@@ -52,6 +56,9 @@ def validate_file(input_file:str, output_file:str)->int:
                                             'error': f"Scan {scan['id']} has empty intensity array"})
                     output_status = 1
                     scan_status[scan_idx] = True
+                    logging.info(f"The following scan reported empty intensity array: {scan['id']}")
+                    logging.info(str(scan))
+
                 if max(scan['intensity array']) == 0:
                     output_writer.writerow({'error_level': 'warning',
                                             'scan': find_integer_at_end(scan['id']),
@@ -59,6 +66,9 @@ def validate_file(input_file:str, output_file:str)->int:
                                             'error': f"Scan {scan['id']} contains no peaks"})
                     output_status = 1
                     scan_status[scan_idx] = True
+                    logging.info(f"The following scan reported zero intensity: {scan['id']}")
+                    logging.info(str(scan))
+
             if np.all(scan_status):
                 output_writer.writerow({'error_level': 'critical',
                                         'scan': 'N/A',
@@ -73,6 +83,11 @@ def main():
     parser.add_argument('--input_file', help='Path to the input file')
     parser.add_argument('--output_file', help='Path to the output file')
     args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    for var, value in vars(args).items():
+        logging.info(f'Argument {var}: {value}')
     
     status = validate_file(args.input_file, args.output_file)
     # sys.exit(status) # Nextflow doesn't have a provision to output files if the process fails. If this comes in the future, it will be a good way to warn users

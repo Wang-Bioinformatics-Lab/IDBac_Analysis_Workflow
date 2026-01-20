@@ -8,7 +8,7 @@ TOOL_FOLDER = "$moduleDir/bin"
 process ml_preprocessing {
     publishDir "${params.output_dir}", mode: 'copy'
 
-    conda "$TOOL_FOLDER/../../bin/conda_maldiquant.yml"
+    conda "$TOOL_FOLDER/../../conda_maldiquant.yml"
 
     input:
     file input_json // Single json for the entire DB
@@ -27,7 +27,7 @@ process ml_preprocessing {
 process ml_preprocessing_from_mzml {
     publishDir "${params.output_dir}", mode: 'copy'
 
-    conda "$TOOL_FOLDER/../../bin/conda_maldiquant.yml"
+    conda "$TOOL_FOLDER/../../conda_maldiquant.yml"
 
     input:
     path input_mzml, stageAs: 'input_mzml_files/*'

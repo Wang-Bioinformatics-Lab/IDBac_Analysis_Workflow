@@ -53,7 +53,7 @@ def load_data(input_filename):
     
     # TODO: read the mzML directly
     with mzml.read(input_filename) as reader:
-        for spectrum in tqdm(reader):
+        for spectrum in tqdm(reader, desc=f"Loading {os.path.basename(input_filename)}"):
             try:
                 scan = spectrum["id"].replace("scanId=", "").split("scan=")[-1]+f"_{spectrum['index']}"
             except:
@@ -173,39 +173,51 @@ def spectrum_binner(ms1_df:pd.DataFrame, input_filename:str, bin_size=1.0, min_m
     return spectra_binned_df
 
 @nb.njit(fastmath=True)
-def _reverse_cosine_value(q, r, q_norm, r_norm, penalty):
+def _reverse_cosine_value(q, r, r_norm, penalty):
     """Compute a single reverse cosine similarity with penalty."""
-    # Apply penalty where ref ≈ 0
-    q_mod = np.where(r <= 1e-6, q * (1 - penalty), q)
+    q_mod = np.where(r == 0.0, q * penalty, q)
+    q_mod_norm = np.sqrt(np.sum(q_mod * q_mod))
+
+    # Cast to float32
+    q_mod = q_mod.astype(np.float32)
+    r = r.astype(np.float32)
+
     dot = np.dot(q_mod, r)
-    denom = q_norm * r_norm
+    denom = q_mod_norm * r_norm
     if denom > 0.0:
-        return dot / denom
-    return 0.0
+        return 1 - (dot / denom)
+    return 1.0
 
 
 @nb.njit(parallel=True, fastmath=True)
-def _pairwise_metric(qry, ref, metric, penalty=0.0):
+def _pairwise_reverse_metric(qry, ref, metric, penalty=1.0):
     """Compute a full pairwise similarity matrix using a given metric."""
     n_q, n_r = qry.shape[0], ref.shape[0]
     result = np.empty((n_q, n_r), dtype=np.float32)
 
-    qry_norms = np.sqrt(np.sum(qry * qry, axis=1))
     ref_norms = np.sqrt(np.sum(ref * ref, axis=1))
 
-    for i in nb.prange(n_q):
-        for j in range(n_r):    # TODO: Potentially optimize to avoid redundant computations
+    # Use prange on the larger loop for better parallelization
+    if n_q < n_r:
+        n_q_range = range(n_q)
+        n_r_range = nb.prange(n_r)
+    else:
+        n_q_range = nb.prange(n_q)
+        n_r_range = range(n_r)
+
+    for i in n_q_range:
+        for j in n_r_range:    # TODO: Potentially optimize to avoid redundant computations
             result[i, j] = metric(
-                qry[i], ref[j], qry_norms[i], ref_norms[j], penalty
+                qry[i], ref[j], ref_norms[j], penalty
             )
 
     return result
 
-def reverse_cosine_distances(np_data_qry, np_data_ref=None, penalty=0.0):
+def reverse_cosine_distances(np_data_qry, np_data_ref=None, penalty=1.0):
     """Compute all-pairs reverse cosine similarity matrix."""
     if np_data_ref is None:
         np_data_ref = np_data_qry
-    return _pairwise_metric(np_data_qry, np_data_ref, _reverse_cosine_value, penalty)
+    return _pairwise_reverse_metric(np_data_qry, np_data_ref, _reverse_cosine_value, penalty)
 
 
 def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, distance_metric:str='cosine', penalty:float=0.0):
@@ -220,8 +232,8 @@ def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, di
         )
 
     if distance_metric not in {
-        "cosine", "presence", "euclidean"
-    } and penalty != 0.0:
+        "reverse_cosine", "reverse_presence"
+    } and penalty != 1.0:
         logging.warning(
             f'Penalty parameter is only used with "reverse_cosine" and "reverse_presence" distance metrics. '
             f'Ignoring penalty={penalty} with distance_metric="{distance_metric}".'

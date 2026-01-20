@@ -1,9 +1,18 @@
 #!/usr/bin/env nextflow
+
+/************
+Note: this file exists to support experiments with preprocessed data.
+Namely, the reverse search of mixed spectra where the query spectra were preprocessed and then mixed.
+************/
+
 nextflow.enable.dsl=2
 
-params.input_spectra_folder             = ""
-params.input_small_molecule_folder      = ""
-params.input_media_control_folder       = ""
+// Only new arg for this entrypoint:
+params.baseline_query_spectra_folder    = ""
+
+// params.input_spectra_folder             = ""
+// params.input_small_molecule_folder      = ""
+// params.input_media_control_folder       = ""
 params.input_metadata_file              = "NO_FILE"
 
 params.merge_replicates                 = "Yes"     // Unused TODO: Remove
@@ -33,28 +42,29 @@ include { protein as protein     }  from "$baseDir/bin/workflows/protein.nf"
 
 workflow {
     // ----------- General data preparation & sanity checks ----------- 
-    data_prep(
-        params.input_spectra_folder,
-        params.input_small_molecule_folder,
-        params.input_media_control_folder,
-        params.input_metadata_file
-    )
+    // Data Preparation is Not Needed
+    // data_prep(
+    //     params.input_spectra_folder,
+    //     params.input_small_molecule_folder,
+    //     params.input_media_control_folder,
+    //     params.input_metadata_file
+    // )
 
-    input_mzml_files_ch         = data_prep.out.input_mzml_files_ch
-    baseline_query_spectra_ch   = data_prep.out.baseline_query_spectra_ch
-    small_mol_ch                = data_prep.out.small_mol_ch
-    blank_channel               = data_prep.out.blank_channel
-    metadata_file_ch            = data_prep.out.metadata_file_ch
-    formatted_metadata_ch       = data_prep.out.formatted_metadata_ch
+    // input_mzml_files_ch         = data_prep.out.input_mzml_files_ch
+    // baseline_query_spectra_ch   = data_prep.out.baseline_query_spectra_ch
+    // small_mol_ch                = data_prep.out.small_mol_ch
+    // blank_channel               = data_prep.out.blank_channel
+    // metadata_file_ch            = data_prep.out.metadata_file_ch
+    // formatted_metadata_ch       = data_prep.out.formatted_metadata_ch
 
 
     // ----------- Small Molecule Processing -----------
-    small_mol(
-        small_mol_ch,
-        blank_channel,
-        params.input_media_control_folder,
-        params.input_metadata_file
-    )
+    // small_mol(
+    //     small_mol_ch,
+    //     blank_channel,
+    //     params.input_media_control_folder,
+    //     params.input_metadata_file
+    // )
     
     // ----------- Protein Analysis -----------
     def search_args = [
@@ -73,6 +83,10 @@ workflow {
         "ml_search_flag": params.ml_search,
         "debug_flag": params.debug_flag
     ]
+
+    // Define new channels for preprocessed data
+    baseline_query_spectra_ch = Channel.fromPath(params.baseline_query_spectra_folder + "/*.mzML")
+    input_mzml_files_ch = channel.empty()   // Only used for ML inference
 
     protein(
         baseline_query_spectra_ch,
