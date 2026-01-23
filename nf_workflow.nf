@@ -55,6 +55,12 @@ workflow {
         params.input_media_control_folder,
         params.input_metadata_file
     )
+
+    // If ML Search, ensure cosine
+    if (params.ml_search == "Yes" && params.distance != "cosine") {
+        println "ML search selected, set distance metric to 'cosine'."
+        exit 1
+    }
     
     // ----------- Protein Analysis -----------
     def search_args = [
