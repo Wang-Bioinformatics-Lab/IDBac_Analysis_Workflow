@@ -105,7 +105,7 @@ def main():
     for var, value in vars(args).items():
         logging.info(f'Argument {var}: {value}')
     
-    breaking_errors()
+    breaking_errors(args.input_file)
 
     status = validate_file(args.input_file, args.output_file)
     # sys.exit(status) # Nextflow doesn't have a provision to output files if the process fails. If this comes in the future, it will be a good way to warn users
