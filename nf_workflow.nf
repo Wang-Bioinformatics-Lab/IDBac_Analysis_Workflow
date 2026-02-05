@@ -47,6 +47,13 @@ workflow {
     metadata_file_ch            = data_prep.out.metadata_file_ch
     formatted_metadata_ch       = data_prep.out.formatted_metadata_ch
 
+    // ----------- Check there is some valid input data -----------
+    input_mzml_files_ch
+    .mix( small_mol_ch )
+    .ifEmpty { 
+        error "Error: No valid input spectra or small molecules found. Ensure files are in .mzML format." 
+    }
+
 
     // ----------- Small Molecule Processing -----------
     small_mol(
@@ -55,6 +62,12 @@ workflow {
         params.input_media_control_folder,
         params.input_metadata_file
     )
+
+    // If ML Search, ensure cosine
+    if (params.ml_search == "Yes" && params.distance != "cosine") {
+        println "ML search selected, set distance metric to 'cosine'."
+        exit 1
+    }
     
     // ----------- Protein Analysis -----------
     def search_args = [

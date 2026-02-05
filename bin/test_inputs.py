@@ -3,6 +3,7 @@ import os
 import sys
 import numpy as np
 from pyteomics import mzml
+import lxml
 import csv
 import re
 import logging
@@ -10,6 +11,21 @@ import logging
 
 def find_integer_at_end(string):
     return int(re.search(r'\d+$', string).group()) if re.search(r'\d+$', string) else 'N/A'
+
+def breaking_errors(input_file:str):
+    """For checking all errors so critical, NextFlow should terminate immediately."""
+    # Ensure file is .mzML
+    if not input_file.lower().endswith('.mzml'):
+        print(f"Input file {input_file} is not an mzML file. Please provide a valid mzML file.", file=sys.stderr, flush=True)
+        sys.exit(1)
+    
+    # Check that this is not an ESI file (we won't check that it's MALDI because I don't trust MSConvert Enough)
+    # Check for minimal criteria for <cvParam accession="MS:1000073"...>
+    root = lxml.etree.parse(input_file).getroot()
+    esi_params = root.findall('.//{*}cvParam[@accession="MS:1000073"]')
+    if len(esi_params) > 0:
+        print(f"Input file {input_file} appears to be an ESI file. Please provide a valid MALDI mzML file.", file=sys.stderr, flush=True)
+        sys.exit(1)
 
 
 def validate_file(input_file:str, output_file:str)->int:
@@ -89,6 +105,8 @@ def main():
     for var, value in vars(args).items():
         logging.info(f'Argument {var}: {value}')
     
+    breaking_errors()
+
     status = validate_file(args.input_file, args.output_file)
     # sys.exit(status) # Nextflow doesn't have a provision to output files if the process fails. If this comes in the future, it will be a good way to warn users
 

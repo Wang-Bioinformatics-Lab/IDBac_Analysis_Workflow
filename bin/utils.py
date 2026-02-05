@@ -220,7 +220,7 @@ def reverse_cosine_distances(np_data_qry, np_data_ref=None, penalty=1.0):
     return _pairwise_reverse_metric(np_data_qry, np_data_ref, _reverse_cosine_value, penalty)
 
 
-def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, distance_metric:str='cosine', penalty:float=0.0):
+def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, distance_metric:str='cosine', penalty:float=0.0, ml_post_norm:bool=False):
 
     if distance_metric not in [
         "cosine", "reverse_cosine",
@@ -253,7 +253,11 @@ def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, di
     elif distance_metric in {"reverse_cosine", "reverse_presence"}:
         selected_fun = reverse_cosine_distances
         result = selected_fun(np_data_X, np_data_Y, penalty=penalty)
-        
+
+    if ml_post_norm:
+        assert distance_metric == "cosine", "ML post normalization is only supported for cosine distance metric."
+        result = (result)/2 # No +1 like we would do to scale similarity , cosine distance is already in [0, 2]
+
     return result
 
 def load_metadata_file(metadata_path:str):

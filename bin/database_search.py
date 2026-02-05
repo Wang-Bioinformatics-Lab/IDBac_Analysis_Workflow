@@ -56,7 +56,14 @@ def load_database(database_filtered_json, mz_min, mz_max, bin_size):
 
     return pd.DataFrame(formatted_database_spectra)
 
-def compute_db_db_distance(database_df, db_numerical_columns, output_path, distance_metric="cosine", unmatched_peak_penalty=1.0):
+def compute_db_db_distance(
+        database_df,
+        db_numerical_columns,
+        output_path,
+        distance_metric="cosine",
+        unmatched_peak_penalty=1.0,
+        ml_post_norm=False,
+        ):
 
     """ This function computes the pairwise distance between the the database results in the first 
     argument, and themselves. This is used to fill out the remainder of the distance matrix.
@@ -79,7 +86,7 @@ def compute_db_db_distance(database_df, db_numerical_columns, output_path, dista
     database_data_np = database_df[db_numerical_columns].to_numpy()
     start_time = time()
     logging.info("Computing database to database distance matrix.")
-    db_db_distance = compute_distances_binned(database_data_np, distance_metric=distance_metric, penalty=unmatched_peak_penalty)
+    db_db_distance = compute_distances_binned(database_data_np, distance_metric=distance_metric, penalty=unmatched_peak_penalty, ml_post_norm=ml_post_norm)
     logging.info("Computed database to database distance matrix in {:.2f} seconds".format(time() - start_time))
 
     output_results_list = []
@@ -405,7 +412,7 @@ def database_search(input_paths, bin_size, database_df,
         # Now lets do pairwise cosine distance
         logging.info("Computing distance matrix for query {} against database.".format(input_filename))
         start_time = time()
-        distance_matrix = compute_distances_binned(query_data_np, database_data_np, distance_metric=args.distance, penalty=args.unmatched_peak_penalty)
+        distance_matrix = compute_distances_binned(query_data_np, database_data_np, distance_metric=args.distance, penalty=args.unmatched_peak_penalty, ml_post_norm=args.ml)
         logging.info("Computed distance matrix for query {} against database in {:.2f} seconds".format(input_filename, time() - start_time))
 
         assert distance_matrix.shape[0] == len(spectra_binned_df), "Distance matrix rows should match the number of queries, but got {} and {}".format(distance_matrix.shape[0], len(spectra_binned_df))
@@ -487,7 +494,7 @@ def within_query_distance(input_paths, bin_size, args):
 
     # Query-Query distance
     start_time = time()
-    distance_matrix = compute_distances_binned(query_data_np, distance_metric=args.distance, penalty=args.unmatched_peak_penalty)
+    distance_matrix = compute_distances_binned(query_data_np, distance_metric=args.distance, penalty=args.unmatched_peak_penalty, ml_post_norm=args.ml)
     logging.info("Computed query to query distance matrix in {:.2f} seconds".format(time() - start_time))
 
     # Create a DataFrame from the distance matrix
@@ -519,7 +526,8 @@ def within_query_distance(input_paths, bin_size, args):
             manual_distance = compute_distances_binned(np.nan_to_num(all_queries_df.loc[a].to_numpy()).reshape(1, -1),
                                                        np.nan_to_num(all_queries_df.loc[b].to_numpy()).reshape(1, -1),
                                                        distance_metric=args.distance,
-                                                       penalty=args.unmatched_peak_penalty)
+                                                       penalty=args.unmatched_peak_penalty,
+                                                       ml_post_norm=args.ml)
             assert np.isclose(distance_df_melted.loc[(distance_df_melted["query_filename_left"] == a) & (distance_df_melted["query_filename_right"] == b), "distance"].values[0],
                                manual_distance[0][0]), \
                 f"Distance between {a} and {b} is not the same as the manual distance calculation: {manual_distance[0][0]}"
@@ -618,7 +626,14 @@ def main():
     # Compute DB-DB distances and save to file immediately
     if 'reverse' not in args.distance:
         logging.info("Starting database-database distance calculation for {} database results.".format(len(database_results_df)))
-        compute_db_db_distance(database_results_df, db_numerical_columns, args.output_db_db_distance_tsv, distance_metric=args.distance, unmatched_peak_penalty=args.unmatched_peak_penalty)
+        compute_db_db_distance(
+            database_results_df,
+            db_numerical_columns,
+            args.output_db_db_distance_tsv,
+            distance_metric=args.distance,
+            unmatched_peak_penalty=args.unmatched_peak_penalty,
+            ml_post_norm=args.ml
+        )
 
     # Enrich the library information by hitting the web api
     all_database_metadata_json = requests.get("https://idbac.org/api/spectra").json()
