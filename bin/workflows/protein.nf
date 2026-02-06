@@ -327,7 +327,7 @@ workflow protein {
 
     main:
     // Perform protein-specific QC
-    (qc_reports, input_files) = qc_spectra(
+    qc_reports = qc_spectra(
         input_mzml_files_ch,
     )
     // Merge QC reports into a single file for easier review
