@@ -35,6 +35,38 @@ Views:
             <a target="_blank" href="/dashboards/embedded/resolver/?usi=mzspec:GNPS2:TASK-${task}-nf_output/merged/${encodeURIComponent(row["filename"])}:scan:${encodeURIComponent(row["scan"])}">View in GNPS2</a>
         `;}}]'
 
+-   name: Query Quality Control Scores
+    displayname: Query Quality Control Scores (Beta)
+    viewname: qc
+    displaytype: datatable
+    parameters:
+        filename: nf_output/qc/combined_output.tsv
+        error_missingfile: "No QC Scores Found"
+        columns:
+            -   title: "View Spectrum"
+                data: None
+            -   title: "Filename"
+                data: original_filename
+            -   title: "Scan"
+                data: scan
+            -   title: "Total QC Score"
+                data: Total QC Score
+            -   title: "Status"
+                data: Status
+            -   title: "Peaks Score"
+                data: Peaks Score
+            -   title: "Noise Score"
+                data: Noise Score
+            # -   title: "Baseline Score"
+            #     data: Baseline Score
+            -   title: "Resolving Power Score"
+                data: Resolving Power Score
+        columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
+        return `
+            <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-input_spectra/${row["original_filename"]}:scan:${row["scan"]}">View Spectrum</a>
+        `;}}]'
+
+
 -   name: Errors
     displayname: Input File Error Summary
     viewname: errors

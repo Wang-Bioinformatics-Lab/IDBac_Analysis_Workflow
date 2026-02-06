@@ -5,6 +5,45 @@ TOOL_FOLDER = "$baseDir/bin"
 
 include { MLInferenceRawVectorsWorkflow as MLInferenceRawVectorsWorkflow } from "$baseDir/bin/ml_inference/ml_inference.nf"  addParams(output_dir: "./nf_output/ml_inference")
 
+process qc_spectra {
+    cpus 2
+    memory '8 GB'
+
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    input:
+    file input_spectra_file
+
+    output:
+    file 'single_file_qc_report.tsv'
+
+    """
+    python $TOOL_FOLDER/qc_protein_spectra.py \
+    --input_spectra $input_spectra_file \
+    --output_path single_file_qc_report.tsv
+    """
+}
+
+process merge_qc_tsv {
+    publishDir "./nf_output/qc", mode: 'copy'
+
+    cpus 2
+
+    memory '8 GB'
+
+    input:
+    path tsv_files, stageAs: "qc_reports/*.tsv"
+
+    output:
+    path "combined_output.tsv"
+
+    script:
+    """
+    # Keep the header from the first file, then append others skipping their headers
+    awk 'FNR==1 && NR!=1{next;}{print}' ${tsv_files} > combined_output.tsv
+    """
+}
+
 // Note: This is used for heatmaps, the outputs are not used for database search
 process mergeInputSpectra {
     publishDir "./nf_output", mode: 'copy', pattern: "merged/*.mzML"
@@ -287,6 +326,15 @@ workflow protein {
     search_args
 
     main:
+    // Perform protein-specific QC
+    (qc_reports, input_files) = qc_spectra(
+        input_mzml_files_ch,
+    )
+    // Merge QC reports into a single file for easier review
+    merge_qc_tsv(
+        qc_reports.collect()
+    )
+
     // Merge already baseline corrected and peak picked spectra
     (
         merged_spectra_ch,
