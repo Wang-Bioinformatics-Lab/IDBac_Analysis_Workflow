@@ -259,7 +259,20 @@ def main():
             for scan in reader:
                 mz = scan['m/z array']
                 intensity = scan['intensity array']
-                qc_results = microbe_ms_style_qc(mz, intensity)
+                try:
+                    qc_results = microbe_ms_style_qc(mz, intensity)
+                except Exception as e:
+                    logging.error(f"Error processing scan {scan['id']} in file {input_file.name}: {e}")
+                    qc_results = {
+                        'Total QC Score': 'Error',
+                        'Status': 'Error',
+                        'Sub-Scores': {
+                            'Peaks': 'Error',
+                            'Noise': 'Error',
+                            'Baseline': 'Error',
+                            'Resolving Power': 'Error'
+                        }
+                    }
                 output_writer.writerow({
                     'original_filename': input_file.name,
                     'scan': find_integer_at_end(scan['id']),
