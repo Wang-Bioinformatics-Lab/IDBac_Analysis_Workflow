@@ -99,55 +99,6 @@ Views:
             -   title: "Distance"
                 data: distance
 
-# -   name: Visualize Dendrogram
-#     displayname: Visualize Dendrogram
-#     viewname: visualize
-#     displaytype: linkout
-#     parameters:
-#         baseurl: /taskresult/[task]/file/nf_output/output.html
-#         urlparam:
-#             -   attachment:no
-
-# -   name: Visualize Dendrogram with Metadata
-#     displayname: Visualize with Metadata
-#     viewname: visualizewithmetadata
-#     displaytype: linkout
-#     parameters:
-#         baseurl: /taskresult/[task]/file/nf_output/with_metadata.html
-#         urlparam:
-#             -   attachment:no
-
-# -   name: Dendrogram Distance
-#     displayname: Dendrogram Distance
-#     viewname: dendrogramresults
-#     displaytype: datatable
-#     parameters:
-#         filename: nf_output/output_distance_table.tsv
-#         error_missingfile: "No File"
-#         columns:
-#             -   title: "View Match"
-#                 data: "label_i"
-#             -   title: "label_i"
-#                 data: "label_i"
-#             -   title: "label_j"
-#                 data: "label_j"
-#             -   title: "distance"
-#                 data: "distance"
-#         columnDefs: '[ {"targets": 0,"data": null,"render": function ( data, type, row, meta ) {
-#         return `
-#             <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1">View Spectrum 1 - Resolver</a>
-#             <br>
-#             <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Spectrum 2 - Resolver</a>
-#             <br>
-#             <a target="_blank" href="https://metabolomics-usi.gnps2.org/dashinterface/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Mirror - Resolver</a>
-#             <br>
-#             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1">View Spectrum 1 - Local</a>
-#             <br>
-#             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Spectrum 2 - Local</a>
-#             <br>
-#             <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_i"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["label_j"]}:scan:1">View Mirror - Local</a>
-#         `;}}]'
-
 -   name: Knowledgebase Search Summary
     displayname: Knowledgebase Search Summary
     viewname: dbresults
@@ -188,3 +139,15 @@ Views:
         #     <br>
         #     <a target="_blank" href="/dashboards/embedded/resolver/?usi1=mzspec:GNPS2:TASK-${task}-nf_output/merged/${row["query_filename"]}:scan:1&usi2=mzspec:GNPS2:TASK-${task}-nf_output/search/output_database.mgf:scan:${row["database_scan"]}">View Mirror - Local</a>
         # `;}}]'
+
+-   name: Downstream Analysis - Molecular Networking (Tasks with MS/MS Data Only)
+    displayname: Downstream Analysis - Molecular Networking (Tasks with MS/MS Data Only)
+    viewname: downstreamworkflow
+    displaytype: linkout
+    parameters:
+        baseurl: /workflowinput
+        urlparam:
+            -   workflowname:classical_networking_workflow
+        hashparam:
+            -   input_spectra:TASKLOCATION/[task]/nf_output/small_molecule/baseline_corrected/baselinecorrected/;
+            -   description:Downstream Molecular Networking from IDBac Task [task]
