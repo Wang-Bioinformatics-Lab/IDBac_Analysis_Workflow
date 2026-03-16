@@ -12,6 +12,7 @@ params.unmatched_peak_penalty           = 1.0       // Only used for "reverse_co
 params.database_search_threshold        = "0.7"
 params.database_search_mass_range_lower = "3000"
 params.database_search_mass_range_upper = "20000"
+params.small_mol_contains_ms2           = "No"      // "Yes" | "No"
 params.ml_search                        = "No"      // If set to "Yes", it will use the ML database search, otherwise it will use the standard database search
 params.metadata_column                  = "None"
 
@@ -37,7 +38,7 @@ workflow {
         params.input_spectra_folder,
         params.input_small_molecule_folder,
         params.input_media_control_folder,
-        params.input_metadata_file
+        params.input_metadata_file,
     )
 
     input_mzml_files_ch         = data_prep.out.input_mzml_files_ch
@@ -60,7 +61,8 @@ workflow {
         small_mol_ch,
         blank_channel,
         params.input_media_control_folder,
-        params.input_metadata_file
+        params.input_metadata_file,
+        params.small_mol_contains_ms2
     )
 
     // If ML Search, ensure cosine

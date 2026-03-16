@@ -138,7 +138,13 @@ workflow data_prep {
     main:
 
     // Define input channels based on parameters
-    input_mzml_files_ch = Channel.fromPath(input_spectra_folder + "/*.mzML")
+    if (input_spectra_folder != "") {
+        input_mzml_files_ch = Channel.fromPath(input_spectra_folder + "/*.mzML")
+    } else {
+        input_mzml_files_ch = channel.empty()
+    }
+
+    // Roll together all mzML files for pre-flight check
     pre_flight_ch = input_mzml_files_ch
     if (input_small_molecule_folder != "") {
         small_mol_ch = Channel.fromPath(input_small_molecule_folder + "/*.mzML")
@@ -173,10 +179,10 @@ workflow data_prep {
     formatted_metadata_ch = formatMetadata(metadata_file_ch)
 
     emit:
-    input_mzml_files_ch = input_mzml_files_ch // for ML inference in core analysis
-    baseline_query_spectra_ch = baseline_query_spectra_ch // main query spectra for merging/searching
-    metadata_file_ch = metadata_file_ch // for small molecule and dendrogram
-    formatted_metadata_ch = formatted_metadata_ch // for core analysis (if needed)
-    small_mol_ch = small_mol_ch // for small molecule analysis (to avoid re-reading)
-    blank_channel = blank_channel // for small molecule analysis (to avoid re-reading)
+    input_mzml_files_ch         = input_mzml_files_ch // for ML inference in core analysis
+    baseline_query_spectra_ch   = baseline_query_spectra_ch // main query spectra for merging/searching
+    metadata_file_ch            = metadata_file_ch // for small molecule and dendrogram
+    formatted_metadata_ch       = formatted_metadata_ch // for core analysis (if needed)
+    small_mol_ch                = small_mol_ch // for small molecule analysis (to avoid re-reading)
+    blank_channel               = blank_channel // for small molecule analysis (to avoid re-reading)
 }

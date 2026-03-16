@@ -83,6 +83,43 @@ process mergeInputSpectra {
     """
 }
 
+process spoofInputSpectra {
+    // Same outputs as mergeInputSpectra, when the channel is empty
+    publishDir "./nf_output", mode: 'copy', pattern: "merged/*.mzML"
+
+    cpus 1
+    memory '1 GB'
+
+    input:
+    val search_args
+
+    output:
+    file 'merged/No_Query_Spectra'  // Empty file to indicate no spectra
+    file 'merge_parameters.txt'
+    file 'bin_counts/bin_counts.csv' optional true   // Only outputs if it's merged
+    file 'bin_counts/replicates.csv' optional true
+    file 'bin_counts/binned_spectra.csv' optional true
+
+    script:
+
+    """
+    # Empty merged spectra
+    mkdir -p merged
+    touch merged/No_Query_Spectra
+
+    # Empty bin_counts.csv
+    mkdir -p bin_counts
+    touch bin_counts/bin_counts.csv
+
+    # Empty replicates.csv
+    touch bin_counts/replicates.csv
+
+    echo "mass_range_lower: ${search_args.database_search_mass_range_lower}" >> merge_parameters.txt
+    echo "mass_range_upper: ${search_args.database_search_mass_range_upper}" >> merge_parameters.txt
+    echo "bin_size: ${search_args.heatmap_bin_size}" >> merge_parameters.txt
+    """
+}
+
 process summarizeSpectra{
     publishDir "./nf_output/query", mode: 'copy'
 
@@ -205,6 +242,33 @@ process databaseSearch {
         echo "Error: db_db_distance.tsv was not created despite distance metric being set to '${search_args.distance}' which should produce this file." >&2
         exit 1
     fi
+    """
+}
+
+process spoofDatabaseSearchOutputs {
+    publishDir "./nf_output/search", mode: 'copy'
+
+    cpus 1
+    memory '1 GB'
+
+    input:
+    val search_args
+
+    output:
+    file 'db_db_distance.tsv'
+    file 'query_query_distances.tsv'
+    file "complete_enriched_db_results.tsv"
+
+    script:
+    """
+    # Empty complete_enriched_db_results.tsv
+    touch complete_enriched_db_results.tsv
+
+    # Empty db_db_distance.tsv
+    touch db_db_distance.tsv
+
+    # Empty query_query_distances.tsv
+    touch query_query_distances.tsv
     """
 }
 
@@ -336,13 +400,26 @@ workflow protein {
     )
 
     // Merge already baseline corrected and peak picked spectra
+    // Split execution paths based on whether any query spectra are present
+    collected_query_spectra_ch = baseline_query_spectra_ch.toList()
+    empty_query_spectra_ch = collected_query_spectra_ch.filter { it.isEmpty() }
+    nonempty_query_spectra_ch = collected_query_spectra_ch.filter { !it.isEmpty() }
+
+    spoofInputSpectra(
+        empty_query_spectra_ch.map { search_args }
+    )
+
+    spoofDatabaseSearchOutputs(
+        empty_query_spectra_ch.map { search_args }
+    )
+
     (
         merged_spectra_ch,
         merge_params,
         count_tables,
         replicate_counts
     ) = mergeInputSpectra(
-        baseline_query_spectra_ch.collect(),
+        nonempty_query_spectra_ch,
         search_args
     )
 
@@ -351,20 +428,22 @@ workflow protein {
         merged_spectra_ch.collect()
     )
 
-    // Downloading Database
-    (
-        output_idbac_database_ch
-    ) = downloadDatabase(search_args)     // In ML mode, this will contain ML data automatically
-
     // Select the data we'll use for the DB search
-    processed_query_data = baseline_query_spectra_ch.collect() // Query data will need to be preprocessed and embedded
+    processed_query_data = nonempty_query_spectra_ch // Query data will need to be preprocessed and embedded
     if (search_args.ml_search_flag == "Yes") {
         // If ML search is enabled, we run the ML inference workflow
+        input_mzml_files_nonempty_ch = input_mzml_files_ch.toList().combine(nonempty_query_spectra_ch).map { input_mzml_files, _ -> input_mzml_files }
         ml_inference_results_ch = MLInferenceRawVectorsWorkflow(
-            input_mzml_files_ch.collect()
+            input_mzml_files_nonempty_ch
         )
         processed_query_data = ml_inference_results_ch.collect()
     }
+
+    search_args_nonempty_ch = nonempty_query_spectra_ch.map { search_args }
+
+    (
+        output_idbac_database_ch
+    ) = downloadDatabase(search_args_nonempty_ch)     // In ML mode, this will contain ML data automatically
 
     // Matching database to query spectra
     (
@@ -376,7 +455,7 @@ workflow protein {
     ) = databaseSearch(
         output_idbac_database_ch,
         processed_query_data,
-        search_args
+        search_args_nonempty_ch
     )
 
     // Enriching database search results with metadata
@@ -395,16 +474,13 @@ workflow protein {
         metadata_file_ch = Channel.fromPath("None")
     }
     
-    // Logic to spoof outputs if no query spectra are present after merging
-    collected                   = baseline_query_spectra_ch.collect()
-    new_collected               = collected.ifEmpty(file("No_Query_Spectra")) 
     enriched_core_results_db_ch = enriched_core_results_db_ch.collect()
     enriched_results            = enriched_core_results_db_ch.ifEmpty(file("No_Enriched_Results"))
 
     createDendrogram(
-        new_collected,
+        nonempty_query_spectra_ch,
         metadata_file_ch,
         enriched_results,
-        search_args
+        search_args_nonempty_ch
     )
 }

@@ -1,1 +1,4 @@
-jupyter/requirements.txt
+pandas
+pybaselines
+scipy
+numpy

@@ -15,13 +15,14 @@ process baseline {
 
     input:
     file input_file 
+    val small_mol_contains_ms2
 
     output:
     file 'baselinecorrected/*.mzML'
 
     """
     mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrectionSM.R $input_file "baselinecorrected/${input_file.fileName}"
+    Rscript $TOOL_FOLDER/baselineCorrectionSM.R $input_file "baselinecorrected/${input_file.fileName}" $small_mol_contains_ms2
     """
 }
 
@@ -60,12 +61,13 @@ process baseline_blank {
 
     input:
     file input_file
+    val small_mol_contains_ms2
 
     output:
     file 'baselinecorrected/*.mzML'
     """
     mkdir baselinecorrected
-    Rscript $TOOL_FOLDER/baselineCorrectionSM.R $input_file baselinecorrected/$input_file
+    Rscript $TOOL_FOLDER/baselineCorrectionSM.R $input_file baselinecorrected/$input_file $small_mol_contains_ms2
     """
 }
 
@@ -102,9 +104,10 @@ workflow small_mol {
     blank_channel               // Our strain-associated media control mzML files
     input_media_control_folder  // The directory containing those mzML files
     input_metadata_file         // Metadata file associated small molecule files with blank files
+    small_mol_contains_ms2      // Whether small molecule spectra are Centroided MS1+MS2 or standard profile MS1 data
 
     main:
-    baseline_corrected_small_molecule = baseline(small_mol_ch)
+    baseline_corrected_small_molecule = baseline(small_mol_ch, small_mol_contains_ms2)
 
     // Let's do some basic sanity checking to provide users friendly errors
     if ((input_media_control_folder != "" && input_media_control_folder != "NO_FILE") && (input_metadata_file == "NO_FILE" || input_metadata_file == "")) {
@@ -123,7 +126,7 @@ workflow small_mol {
              error "An input metadata file is required for media control"
         }
 
-        baseline_corrected_blank = baseline_blank(blank_channel)
+        baseline_corrected_blank = baseline_blank(blank_channel, small_mol_contains_ms2)
         
         // Metadata is guaranteed to be present here based on the if condition
         metadata_file_ch_small_mol = Channel.fromPath(input_metadata_file) 

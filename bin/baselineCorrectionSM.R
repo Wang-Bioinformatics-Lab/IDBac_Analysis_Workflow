@@ -2,7 +2,15 @@
 library(MALDIquant)
 library(MALDIquantForeign)
 
-process_mzML_file <- function(input_file, output_file) {
+process_mzML_file <- function(input_file, output_file, contains_ms2) {
+  # Check if MS1+MS2 code path
+  if (contains_ms2) {
+    # Simply, reoutput
+    cat("Input spectra contain MS2 data. Skipping baseline correction and peak detection.\n")
+    file.copy(input_file, output_file)
+    return()
+  }
+
   # Read the mzML file
   spectra <- importMzMl(input_file)
 
@@ -18,6 +26,8 @@ process_mzML_file <- function(input_file, output_file) {
     
     return()
   }
+
+  cat("Performing baseline correction and peak detection on MS1 spectra.\n")
 
   spectra <- MALDIquant::smoothIntensity(spectra,
                                          method = 'SavitzkyGolay',
@@ -40,5 +50,8 @@ process_mzML_file <- function(input_file, output_file) {
 args <- commandArgs(trailingOnly = TRUE)
 input_file <- args[1]
 output_file <- args[2]
+contains_ms2 <- args[3]
 
-process_mzML_file(input_file, output_file)
+contains_ms2 <- tolower(args[3]) %in% c("yes", "y", "true")
+
+process_mzML_file(input_file, output_file, contains_ms2)

@@ -70,6 +70,17 @@ parameterlist:
         # - value: "reverse_presence"
         #   display: "Reverse Presence"
 
+    - displayname: Small molecule data contains MS/MS spectra (Beta)
+      paramtype: select
+      nf_paramname: small_mol_contains_ms2
+      formvalue: "No"
+      options:
+        - value: "Yes"
+          display: "Yes"
+        - value: "No"
+          display: "No"
+      tooltip: "If 'Yes', these spectra are expected to be centroided and peak picked."
+
     - displayname: Use ML-based Spectral Search (Beta)
       paramtype: select
       nf_paramname: ml_search
