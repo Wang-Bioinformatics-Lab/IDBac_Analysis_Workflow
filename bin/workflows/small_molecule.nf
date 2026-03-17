@@ -97,6 +97,28 @@ process media_control {
     """
 }
 
+process convert_to_mgf {
+    publishDir "./nf_output/small_molecule/gnps_mgf", mode: 'copy'
+    cache true
+    conda "$TOOL_FOLDER/conda_env.yml"
+
+    cpus 2
+    memory '8 GB'
+
+    input:
+    file small_molecule_file
+
+    output:
+    file 'mgf_output/*.mgf'
+
+    """
+    mkdir -p mgf_output
+    python $TOOL_FOLDER/convert_mzml_to_mgf.py \
+        --input_file "${small_molecule_file}" \
+        --output_file "mgf_output/${small_molecule_file.simpleName}.mgf"
+    """
+}
+
 workflow small_mol {
 
     take:
@@ -137,6 +159,8 @@ workflow small_mol {
             baseline_corrected_blank.collect()
         )
     }
+
+    convert_to_mgf(baseline_corrected_small_molecule)
 
     summarize(baseline_corrected_small_molecule.collect())
 
