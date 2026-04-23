@@ -513,9 +513,10 @@ def within_query_distance(input_paths, bin_size, args):
         for a, b in zip(vals_a, vals_b):
             # Check that the distance is symmetric
             if 'reverse' not in args.distance:
-                assert distance_df_melted.loc[(distance_df_melted["query_filename_left"] == a) & (distance_df_melted["query_filename_right"] == b), "distance"].values[0] == \
-                    distance_df_melted.loc[(distance_df_melted["query_filename_left"] == b) & (distance_df_melted["query_filename_right"] == a), "distance"].values[0], \
-                    f"Distance between {a} and {b} is not the same as between {b} and {a} (not symmetric)."
+                d1 = distance_df_melted.loc[(distance_df_melted["query_filename_left"] == a) & (distance_df_melted["query_filename_right"] == b), "distance"].values[0]
+                d2 = distance_df_melted.loc[(distance_df_melted["query_filename_left"] == b) & (distance_df_melted["query_filename_right"] == a), "distance"].values[0]
+                assert np.isclose(d1, d2), \
+                    f"Distance between {a} and {b} is not the same as between {b} and {a} (not symmetric {d1} vs {d2})."
                 
             # Check that it's the same in the melted DataFrame
             assert distance_df_melted.loc[(distance_df_melted["query_filename_left"] == a) & (distance_df_melted["query_filename_right"] == b), "distance"].values[0] == \
