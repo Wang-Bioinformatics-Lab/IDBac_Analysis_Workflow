@@ -60,7 +60,6 @@ process ml_inference  {
             --output_file ml_vectors.feather \
             --onnx_model $TOOL_FOLDER/models/CLIP_Transformer.onnx
 
-            // --onnx_model $TOOL_FOLDER/models/CLIP_Transformer_1_28_2026.onnx
     """
 }
 

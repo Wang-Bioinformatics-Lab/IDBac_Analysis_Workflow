@@ -6,35 +6,44 @@ import sys
 import onnxruntime as ort
 import numpy as np
 from tqdm import tqdm
+import pickle
 from torch import Tensor
 from custom_transforms import SquareRootTransform, SelectTopKPeaks, BinarizeIntensity, NormalizeIntensity, PadToLength
 
-trans = transforms.Compose([
-    SquareRootTransform(),
-    SelectTopKPeaks(150),
-    BinarizeIntensity(),  # *************
-    NormalizeIntensity(),
-    PadToLength(150, padding_value=-1.0),
-])
+trans =  transforms.Compose([
+                                SquareRootTransform(),
+                                SelectTopKPeaks(150),
+                                # BinarizeIntensity(),
+                                NormalizeIntensity(),
+                                PadToLength(150, padding_value=-1.0),
+                                ])
 
 def run_inference(ml_data_directory: Path, output_file: Path, session: ort.InferenceSession):
 
     outputs = {}
 
-    for file in tqdm(list(ml_data_directory.glob('*.npy'))):
+    for file in tqdm(list(ml_data_directory.glob('*.pkl'))):
         if not file.is_file():
             continue
         
         # Load the data
-        data = np.load(file)
+        data = pickle.load(open(file, 'rb'))
         db_id = file.stem
+        embedded_scans = []
+        for idx, scan in enumerate(data):
+            print(f"Processing {db_id} scan {idx+1}/{len(data)}", flush=True)
 
-        transformed = trans(Tensor(data).T).unsqueeze(0).numpy().astype(np.float32)
+            transformed = trans(Tensor(scan).T).unsqueeze(0).numpy().astype(np.float32)
+            output = session.run(None, {session.get_inputs()[0].name: transformed})[0].squeeze().tolist()
+            embedded_scans.append(output)
 
         # Add a .mzML to keep consistent naming with original input_files
         output_name = f"{db_id}.mzML"
 
-        outputs[output_name] = session.run(None, {session.get_inputs()[0].name: transformed})[0].squeeze().tolist()
+        # Average the embeddings across scans
+        averaged_output = np.mean(embedded_scans, axis=0)
+
+        outputs[output_name] = averaged_output
 
 
     print(outputs)

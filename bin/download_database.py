@@ -79,6 +79,7 @@ def main():
 
         all_spectra_list = get_with_retries(url).json()
 
+        # TODO: Get these in a batch rather than requesting them all independently
         for spectrum in all_spectra_list:
             database_id = spectrum["database_id"]
 

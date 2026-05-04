@@ -12,6 +12,34 @@ import logging
 from tqdm import tqdm
 import glob
 
+def _build_contiguous_bin_columns(bin_columns):
+    bin_indices = []
+    for column in bin_columns:
+        if column.startswith("BIN_"):
+            try:
+                bin_indices.append(int(column.split("_", 1)[1]))
+            except ValueError:
+                continue
+
+    if len(bin_indices) == 0:
+        return ["BIN_-1"]
+
+    min_bin = min(bin_indices)
+    max_bin = max(bin_indices)
+    return ["BIN_" + str(i) for i in range(min_bin, max_bin + 1)]
+
+def _align_dataframe_to_bins(df, merged_numerical_columns):
+    numerical_columns = [x for x in df.columns if x.startswith("BIN_")]
+    if len(numerical_columns) > 0:
+        df[numerical_columns] = df[numerical_columns].fillna(0)
+
+    missing_columns = [column for column in merged_numerical_columns if column not in df.columns]
+    if len(missing_columns) > 0:
+        missing_df = pd.DataFrame(0, index=df.index, columns=missing_columns)
+        df = pd.concat([df, missing_df], axis=1)
+
+    return df
+
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('input_folder')
@@ -78,11 +106,14 @@ def main():
     numerical_columns = [x for x in all_spectra_df.columns if x.startswith("BIN_")]
     logging.debug("Got {} numerical columns".format(len(numerical_columns)))
 
+    merged_numerical_columns = _build_contiguous_bin_columns(numerical_columns)
+    all_spectra_df = _align_dataframe_to_bins(all_spectra_df, merged_numerical_columns)
+
     # Fill in the missing values with 0
-    all_spectra_df[numerical_columns] = all_spectra_df[numerical_columns].fillna(0)
+    all_spectra_df[merged_numerical_columns] = all_spectra_df[merged_numerical_columns].fillna(0)
     logging.debug("all_spectra_df {}".format(all_spectra_df))
 
-    data_np = all_spectra_df[numerical_columns].to_numpy()
+    data_np = all_spectra_df[merged_numerical_columns].to_numpy()
     logging.debug("data_np shape: {}".format(data_np.shape))
     logging.debug("data_np: {}".format(data_np))
 
