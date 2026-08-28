@@ -14,6 +14,7 @@ params.baseline_query_spectra_folder    = ""
 // params.input_small_molecule_folder      = ""
 // params.input_media_control_folder       = ""
 params.input_metadata_file              = "NO_FILE"
+params.publishdir                       = "."
 
 params.merge_replicates                 = "Yes"     // Unused TODO: Remove
 params.distance                         = "cosine"  // Options: "cosine", "euclidean", "presence", "reverse_cosine", "reverse_presence"
@@ -41,6 +42,33 @@ include { small_mol as small_mol }  from "$baseDir/bin/workflows/small_molecule.
 include { protein as protein     }  from "$baseDir/bin/workflows/protein.nf"
 
 workflow {
+    // GNPS2 displays this fixed file above the result links. Register the
+    // handler before any validation so even graph-construction errors produce it.
+    workflow.onError = {
+        def marker = 'IDBAC_USER_ERROR:'
+        def report = (workflow.errorReport ?: '').toString()
+        def commandErrorStart = report.indexOf('Command error:')
+        def commandErrorEnd = report.indexOf('\nWork dir:', commandErrorStart + 1)
+        def commandError = commandErrorStart >= 0
+            ? report.substring(commandErrorStart, commandErrorEnd >= 0 ? commandErrorEnd : report.size())
+            : ''
+        def markerSource = "${workflow.errorMessage ?: ''}\n${commandError}"
+        def markedMessages = markerSource.readLines()
+            .findAll { line -> line.contains(marker) }
+            .collect { line -> line.substring(line.indexOf(marker) + marker.size()).trim() }
+            .findAll { line -> line }
+            .unique()
+
+        def failureMessage = markedMessages
+            ? markedMessages.join('\n')
+            : (workflow.errorMessage ?: 'The workflow stopped because an unexpected error occurred.').toString()
+
+        def summaryFile = file("${params.publishdir}/nf_output/workflow_summary.txt")
+        summaryFile.parent.mkdirs()
+        summaryFile.text = "ERROR: Workflow failed.\n\n${failureMessage}\n\nSee the task log for technical details.\n"
+        println "Wrote user-facing failure summary to ${summaryFile}"
+    }
+
     // ----------- General data preparation & sanity checks ----------- 
     // Data Preparation is Not Needed
     // data_prep(

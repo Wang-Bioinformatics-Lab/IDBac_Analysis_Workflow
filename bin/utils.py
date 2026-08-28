@@ -227,7 +227,7 @@ def compute_distances_binned(np_data_X:np.ndarray, np_data_Y:np.ndarray=None, di
         "euclidean", "presence", "reverse_presence"
     ]:
         raise ValueError(
-            f'Invalid distance metric: "{distance_metric}". '
+            f'IDBAC_USER_ERROR: Invalid distance metric: "{distance_metric}". '
             f'Expected one of cosine, reverse_cosine, euclidean, presence, reverse_presence.'
         )
 
@@ -295,7 +295,7 @@ def load_metadata_file(metadata_path:str):
             if len(metadata_df) == 1:
                 metadata_df = list(metadata_df.values())[0]
             else:
-                raise ValueError(f"Excel file should contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'. Instead found {metadata_df.keys()}")
+                raise ValueError(f"IDBAC_USER_ERROR: Excel metadata must contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'. Found {metadata_df.keys()}")
     elif metadata_path.endswith('.xls'):
         metadata_df = pd.read_excel(metadata_path, sheet_name=None)
         # If it contains multiple tables, get the one named "Metadata sheet"
@@ -314,11 +314,11 @@ def load_metadata_file(metadata_path:str):
             if len(metadata_df) == 1:
                 metadata_df = list(metadata_df.values())[0]
             else:
-                raise ValueError(f"Excel file should contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'. Instead found {metadata_df.keys()}")
+                raise ValueError(f"IDBAC_USER_ERROR: Excel metadata must contain only one sheet, or one named 'Metadata sheet' or 'Metadata template'. Found {metadata_df.keys()}")
     elif metadata_path.endswith('.tsv'):
         metadata_df = pd.read_csv(metadata_path, sep='\t')
     else:
-        raise ValueError(f'Metadata file must be a CSV, XLSX, XLS, or TSV file, but got {metadata_path} instead.')
+        raise ValueError(f"IDBAC_USER_ERROR: Metadata must be a CSV, XLSX, XLS, or TSV file, but received '{metadata_path}'.")
     
     return metadata_df
 

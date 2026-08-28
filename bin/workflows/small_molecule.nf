@@ -108,7 +108,7 @@ workflow small_mol {
 
     // Let's do some basic sanity checking to provide users friendly errors
     if ((input_media_control_folder != "" && input_media_control_folder != "NO_FILE") && (input_metadata_file == "NO_FILE" || input_metadata_file == "")) {
-         error "An input metadata file is required for media control"
+         error "IDBAC_USER_ERROR: An input metadata file is required when media-control spectra are provided."
     }
     // Requires newer nextflow version than prod:
     // if (input_media_control_folder != ""&& blank_channel.size() == 0)  {
@@ -120,7 +120,7 @@ workflow small_mol {
         
         // Check for required metadata when media control is present
         if ((input_media_control_folder != "" && input_media_control_folder != "NO_FILE") && (input_metadata_file == "NO_FILE" || input_metadata_file == "")) {
-             error "An input metadata file is required for media control"
+             error "IDBAC_USER_ERROR: An input metadata file is required when media-control spectra are provided."
         }
 
         baseline_corrected_blank = baseline_blank(blank_channel)

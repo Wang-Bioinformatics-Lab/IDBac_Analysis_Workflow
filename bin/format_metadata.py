@@ -17,7 +17,7 @@ def main():
 
     metadata_path = Path(args.metadata_path)
     if not metadata_path.exists():
-        raise FileNotFoundError(f"Metadata file not found at {metadata_path}")
+        raise FileNotFoundError(f"IDBAC_USER_ERROR: Metadata file was not found at '{metadata_path}'.")
 
     metadata_df = load_metadata_file(metadata_path)
     if metadata_df is not None:

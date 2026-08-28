@@ -202,7 +202,7 @@ process databaseSearch {
 
     # Manually check that db_db_distance.tsv exists, if distance is not reverse_*, since those do not produce db_db_distance.tsv
     if [ "${search_args.distance}" != "reverse_cosine" ] && [ "${search_args.distance}" != "reverse_presence" ] && [ ! -f db_db_distance.tsv ]; then
-        echo "Error: db_db_distance.tsv was not created despite distance metric being set to '${search_args.distance}' which should produce this file." >&2
+        echo "IDBAC_USER_ERROR: Database search did not create the expected distance table for metric '${search_args.distance}'." >&2
         exit 1
     fi
     """

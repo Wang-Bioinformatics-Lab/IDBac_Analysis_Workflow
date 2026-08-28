@@ -231,7 +231,7 @@ def parse_args():
 
     # Check unmatched_peak_penalty in [0.0, 1.0]
     if parser.parse_args().unmatched_peak_penalty < 0.0 or parser.parse_args().unmatched_peak_penalty > 1.0:
-        raise ValueError("unmatched_peak_penalty must be between 0.0 and 1.0")
+        raise ValueError("IDBAC_USER_ERROR: unmatched_peak_penalty must be between 0.0 and 1.0")
 
     return parser.parse_args()
 

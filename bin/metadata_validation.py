@@ -8,12 +8,17 @@ def metadata_validation(metadata_table:pd.DataFrame):
     Any changes to this function should also be reflected in the IDBac Interactive Interface code.
     """
 
+    if 'Filename' not in metadata_table.columns:
+        raise ValueError("IDBAC_USER_ERROR: The metadata table is missing the required 'Filename' column.")
+
     # Check for duplicates in the metadata table
     duplicated_rows = metadata_table[metadata_table['Filename'].duplicated(keep=False)]
     if not duplicated_rows.empty:
-        raise ValueError(f"""The metadata table contains duplicate values in the 'Filename' column. Please remove duplicates and try again.")
-                             Duplicated Rows: 
-                            {duplicated_rows}""")
+        duplicate_names = duplicated_rows['Filename'].astype(str).tolist()
+        raise ValueError(
+            "IDBAC_USER_ERROR: The metadata table contains duplicate values in the 'Filename' column. "
+            f"Please remove duplicates and try again. Duplicate filenames: {duplicate_names}"
+        )
 
 
 

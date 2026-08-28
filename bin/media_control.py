@@ -18,7 +18,7 @@ def load_data(input_filepath):
             elif spectrum['ms level'] == 2:
                 ms2_df_list.append(pd.DataFrame({'mz': spectrum['m/z array'], 'i': spectrum['intensity array'], 'scan': spectrum['id']}))
             else:
-                raise ValueError(f"Unsupported MS level {spectrum['ms level']}")
+                raise ValueError(f"IDBAC_USER_ERROR: Unsupported MS level {spectrum['ms level']} in '{os.path.basename(input_filepath)}'. Media-control correction supports MS1 spectra only.")
             
     ms1_df = pd.concat(ms1_df_list, ignore_index=True)
     if len(ms2_df_list) > 0:
@@ -69,7 +69,11 @@ def media_control(mzml_file, media_control_file, output_file):
                         scan = 1
                         for spectrum in mzml_reader:
 
-                            assert spectrum['ms level'] == 1, "Only MS1 spectra are supported"
+                            if spectrum['ms level'] != 1:
+                                raise ValueError(
+                                    f"IDBAC_USER_ERROR: Unsupported MS level {spectrum['ms level']} in "
+                                    f"'{os.path.basename(mzml_file)}'. Media-control correction supports MS1 spectra only."
+                                )
                             mz_array = spectrum['m/z array']
                             intensity_array = spectrum['intensity array']
                             
@@ -113,9 +117,9 @@ def main():
     if os.path.basename(args.small_molecule_file) not in metadata_df['Small molecule file name'].values:
         # Check if it's in there (case insensitive)
         if os.path.basename(args.small_molecule_file).lower().strip() in metadata_df['Small molecule file name'].str.lower().str.strip().values:
-            raise ValueError(f"Found '{os.path.basename(args.small_molecule_file)}' in the metadata file, but it is not an exact match. Please check the case, spelling, and leading and training spaces.")
+            raise ValueError(f"IDBAC_USER_ERROR: Found '{os.path.basename(args.small_molecule_file)}' in the metadata file, but it is not an exact match. Please check case, spelling, and leading or trailing spaces.")
 
-        raise ValueError(f"Could not find '{os.path.basename(args.small_molecule_file)}' in the metadata file. Is it in the metadata file?")
+        raise ValueError(f"IDBAC_USER_ERROR: Could not find '{os.path.basename(args.small_molecule_file)}' in the metadata file.")
 
     # Get relevant media control file for the mzML file
     try:
@@ -123,7 +127,7 @@ def main():
     except IndexError:
         print(metadata_df)
         print(metadata_df[metadata_df['Small molecule file name'] == os.path.basename(args.small_molecule_file)])
-        raise ValueError(f"Could not find media control file for '{os.path.basename(args.small_molecule_file)}' Is it in the metadata file?")
+        raise ValueError(f"IDBAC_USER_ERROR: Could not find a media-control filename for '{os.path.basename(args.small_molecule_file)}' in the metadata file.")
        
     media_control(mzml_file=args.small_molecule_file, media_control_file=os.path.join(args.media_control_dir,media_control_file), output_file=args.output_file)
 

@@ -19,9 +19,10 @@ process metadataValidation {
 }
 
 /* 
- * Simple sanity checks on mzML files that we can warn the users about
- * 1. Ensure each files has scans
- * 2. Ensure each scan has peaks with non-zero intensities (this tend to be a common issue with MALDI data)
+ * Sanity checks on mzML inputs:
+ * 1. Ensure each file has scans.
+ * 2. Ensure each scan has peaks with non-zero intensities.
+ * 3. Hard-fail protein files with no usable peaks in the configured search range.
  */
 process preFlightCheck {
     conda "$TOOL_FOLDER/conda_env.yml"
@@ -30,14 +31,19 @@ process preFlightCheck {
     memory '8 GB'
 
     input:
-    each file(input_file )
+    tuple file(input_file), val(spectrum_type)
+    val mass_range_lower
+    val mass_range_upper
 
     output:
     path('errors.csv'), optional: true
 
     """
     python3 $TOOL_FOLDER/test_inputs.py --input_file $input_file \
-                                        --output_file errors.csv
+                                        --output_file errors.csv \
+                                        --spectrum_type $spectrum_type \
+                                        --mass_range_lower $mass_range_lower \
+                                        --mass_range_upper $mass_range_upper
     """
 }
 
@@ -134,21 +140,25 @@ workflow data_prep {
     input_small_molecule_folder
     input_media_control_folder
     input_metadata_file
+    protein_mass_range_lower
+    protein_mass_range_upper
 
     main:
 
     // Define input channels based on parameters
     input_mzml_files_ch = Channel.fromPath(input_spectra_folder + "/*.mzML")
-    pre_flight_ch = input_mzml_files_ch
+    pre_flight_ch = input_mzml_files_ch.map { input_file -> tuple(input_file, 'protein') }
     if (input_small_molecule_folder != "") {
         small_mol_ch = Channel.fromPath(input_small_molecule_folder + "/*.mzML")
-        pre_flight_ch = pre_flight_ch.concat(small_mol_ch)
+        small_mol_pre_flight_ch = small_mol_ch.map { input_file -> tuple(input_file, 'other') }
+        pre_flight_ch = pre_flight_ch.concat(small_mol_pre_flight_ch)
     } else {
         small_mol_ch = channel.empty()
     }
     if (input_media_control_folder != "") {
         blank_channel = Channel.fromPath(input_media_control_folder + "/*.mzML")
-        pre_flight_ch = pre_flight_ch.concat(blank_channel)
+        blank_pre_flight_ch = blank_channel.map { input_file -> tuple(input_file, 'other') }
+        pre_flight_ch = pre_flight_ch.concat(blank_pre_flight_ch)
     } else {
         blank_channel = channel.empty()
     }
@@ -160,7 +170,7 @@ workflow data_prep {
     }
 
     // Run Pre-flight Check and Error Output
-    preFlightFailures = preFlightCheck(pre_flight_ch)
+    preFlightFailures = preFlightCheck(pre_flight_ch, protein_mass_range_lower, protein_mass_range_upper)
     outputErrors(preFlightFailures.collect())
 
     // Do a direct merge of protein spectra for downstream plotting
